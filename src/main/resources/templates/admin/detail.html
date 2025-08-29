@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${repoName} + ' - ' + #{ui.repo.detail}">仓库详情 - Mini Git Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo h1 {
+            font-size: 1.5rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .info-label {
+            font-weight: 500;
+            color: #333;
+        }
+        .info-value {
+            color: #666;
+            word-break: break-all;
+        }
+        .clone-url {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin: 1rem 0;
+            word-break: break-all;
+        }
+        .debug-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .debug-info h4 {
+            margin-bottom: 0.5rem;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 1rem;
+        }
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+        .tab:hover {
+            color: #2980b9;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .branch-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .branch-selector select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: white;
+        }
+        .file-list {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .file-header {
+            background: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #ddd;
+            font-weight: 500;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 1rem;
+        }
+        .file-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 1rem;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .file-item:hover {
+            background: #f8f9fa;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .file-icon {
+            font-size: 1.2rem;
+        }
+        .commit-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .commit-item {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .commit-item:last-child {
+            border-bottom: none;
+        }
+        .commit-info {
+            flex: 1;
+        }
+        .commit-message {
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+        .commit-meta {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .commit-id {
+            font-family: monospace;
+            background: #f1f1f1;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+        .empty-repo {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        .empty-repo h3 {
+            margin-bottom: 1rem;
+        }
+        .empty-repo pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: left;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-right: 1rem;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+    <script>
+        function switchTab(tabName) {
+            // 隐藏所有标签内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 显示选中的标签内容
+            document.getElementById(tabName + '-content').classList.add('active');
+            document.querySelector('[onclick="switchTab(\'' + tabName + '\')"]').classList.add('active');
+        }
+        
+        function switchBranch() {
+            const branch = document.getElementById('branchSelect').value;
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('branch', branch);
+            window.location.href = currentUrl.toString();
+        }
+        
+        // 页面加载完成后默认显示第一个标签
+        window.onload = function() {
+            const firstTab = document.querySelector('.tab');
+            if (firstTab) {
+                firstTab.click();
+            }
+        }
+    </script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <h1 th:text="#{ui.title}">🔧 Mini Git Server</h1>
+            </div>
+            <div>
+                <a href="/admin" style="color: white; text-decoration: none;" th:text="'← ' + #{ui.back}">← 返回管理后台</a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- 调试信息 -->
+        <div class="debug-info">
+            <h4>🔍 调试信息</h4>
+            <p>仓库状态: <span th:text="${isEmpty} ? '空仓库' : '有内容'">状态</span></p>
+            <p>分支数量: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
+            <p>提交数量: <span th:text="${commits != null ? commits.size() : 0}">0</span></p>
+            <p>文件数量: <span th:text="${files != null ? files.size() : 0}">0</span></p>
+            <a th:href="${debugUrl}" target="_blank" class="btn btn-small">查看详细调试信息</a>
+            <a th:href="'?debug=true'" class="btn btn-small">启用调试模式</a>
+        </div>
+        
+        <div class="card">
+            <h2>📚 <span th:text="#{ui.repo.detail}">仓库详情</span></h2>
+            
+            <div class="info-grid">
+                <div class="info-label" th:text="#{ui.repo.name} + ':'">仓库名称:</div>
+                <div class="info-value" th:text="${repoName}">repository.git</div>
+                
+                <div class="info-label" th:text="#{ui.storage.path} + ':'">存储路径:</div>
+                <div class="info-value" th:text="${repoPath}">/path/to/repo</div>
+                
+                <div class="info-label" th:text="#{ui.repo.size} + ':'">仓库大小:</div>
+                <div class="info-value" th:text="${#numbers.formatDecimal(repoSize / 1024.0, 1, 1)} + ' KB'">0 KB</div>
+            </div>
+            
+            <h3 th:text="#{ui.clone.url}">克隆地址</h3>
+            <div class="clone-url" th:text="${cloneUrl}">http://localhost:8080/git/repository.git</div>
+        </div>
+        
+        <!-- Git错误提示 -->
+        <div th:if="${gitError}" class="alert alert-warning">
+            <strong>Git错误:</strong> <span th:text="${gitError}"></span>
+            <div th:if="${gitErrorDetail}" style="margin-top: 0.5rem; font-size: 0.9rem;">
+                详细信息: <span th:text="${gitErrorDetail}"></span>
+            </div>
+        </div>
+        
+        <!-- 空仓库提示 -->
+        <div th:if="${isEmpty}" class="card">
+            <div class="empty-repo">
+                <h3>📝 这是一个空仓库</h3>
+                <p>仓库已创建，但还没有任何提交。你可以通过以下方式添加内容：</p>
+                
+                <h4>🚀 快速开始</h4>
+                <pre th:text="'echo &quot;# ' + ${repoName} + '&quot; >> README.md
+git init
+git add README.md
+git commit -m &quot;first commit&quot;
+git branch -M main
+git remote add origin ' + ${cloneUrl} + '
+git push -u origin main'">命令示例</pre>
+                
+                <h4>📤 推送现有仓库</h4>
+                <pre th:text="'git remote add origin ' + ${cloneUrl} + '
+git branch -M main
+git push -u origin main'">推送命令</pre>
+            </div>
+        </div>
+        
+        <!-- Git内容（非空仓库） -->
+        <div th:unless="${isEmpty}" class="card">
+            <!-- 分支选择器 -->
+            <div th:if="${branches != null and !branches.empty}" class="branch-selector">
+                <span>🌿 分支:</span>
+                <select id="branchSelect" onchange="switchBranch()" th:value="${currentBranch}">
+                    <option th:each="branch : ${branches}" 
+                            th:value="${branch.shortName}" 
+                            th:text="${branch.shortName + (branch.default ? ' (默认)' : '')}"
+                            th:selected="${branch.shortName == currentBranch}">
+                        main
+                    </option>
+                </select>
+                <span th:if="${branches.size() > 0}" th:text="'共 ' + ${branches.size()} + ' 个分支'">共 1 个分支</span>
+            </div>
+            
+            <!-- 状态信息 -->
+            <div class="alert alert-info" th:if="${currentBranch}">
+                当前分支: <strong th:text="${currentBranch}">master</strong> | 
+                提交数: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
+                文件数: <strong th:text="${files != null ? files.size() : 0}">0</strong>
+            </div>
+            
+            <!-- 标签导航 -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('files')">📁 文件</button>
+                <button class="tab" onclick="switchTab('commits')">📋 提交历史</button>
+                <button class="tab" onclick="switchTab('branches')">🌿 分支</button>
+            </div>
+            
+            <!-- 文件列表标签 -->
+            <div id="files-content" class="tab-content active">
+                <div th:if="${files != null and !files.empty}" class="file-list">
+                    <div class="file-header">
+                        <div>文件名</div>
+                        <div>大小</div>
+                        <div>类型</div>
+                    </div>
+                    <div th:each="file : ${files}" class="file-item">
+                        <div class="file-name">
+                            <span class="file-icon" th:text="${file.type == 'directory' ? '📁' : '📄'}">📄</span>
+                            <span th:text="${file.name}">filename</span>
+                        </div>
+                        <div th:text="${file.sizeFormatted}">1.2 KB</div>
+                        <div th:text="${file.type == 'directory' ? '目录' : '文件'}">文件</div>
+                    </div>
+                </div>
+                <div th:if="${files == null or files.empty}" style="text-align: center; padding: 2rem; color: #666;">
+                    📂 此目录为空或分支无内容
+                    <div style="margin-top: 1rem; font-size: 0.9rem;" th:if="${currentBranch}">
+                        当前分支: <span th:text="${currentBranch}">branch</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 提交历史标签 -->
+            <div id="commits-content" class="tab-content">
+                <div th:if="${commits != null and !commits.empty}" class="commit-list">
+                    <div th:each="commit : ${commits}" class="commit-item">
+                        <div class="commit-info">
+                            <div class="commit-message" th:text="${commit.message}">Initial commit</div>
+                            <div class="commit-meta">
+                                <span th:text="${commit.author}">作者</span> · 
+                                <span th:text="${commit.dateFormatted}">2025-08-29 12:00:00</span>
+                            </div>
+                        </div>
+                        <div class="commit-id" th:text="${commit.shortId}">abcd1234</div>
+                    </div>
+                </div>
+                <div th:if="${commits == null or commits.empty}" style="text-align: center; padding: 2rem; color: #666;">
+                    📋 暂无提交记录
+                    <div style="margin-top: 1rem; font-size: 0.9rem;">
+                        分支: <span th:text="${currentBranch ?: '未知'}">branch</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 分支列表标签 -->
+            <div id="branches-content" class="tab-content">
+                <div th:if="${branches != null and !branches.empty}" class="commit-list">
+                    <div th:each="branch : ${branches}" class="commit-item">
+                        <div class="commit-info">
+                            <div class="commit-message">
+                                🌿 <span th:text="${branch.shortName}">main</span>
+                                <span th:if="${branch.default}" style="color: #27ae60; font-size: 0.8rem;">(默认)</span>
+                            </div>
+                            <div class="commit-meta" th:if="${branch.lastCommitMessage}">
+                                最后提交: <span th:text="${branch.lastCommitMessage}">commit message</span>
+                            </div>
+                        </div>
+                        <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
+                    </div>
+                </div>
+                <div th:if="${branches == null or branches.empty}" style="text-align: center; padding: 2rem; color: #666;">
+                    🌿 暂无分支
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <a href="/admin" class="btn btn-secondary" th:text="#{ui.back}">返回列表</a>
+        </div>
+    </div>
+</body>
+</html>

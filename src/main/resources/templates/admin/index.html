@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{ui.title} + ' - ' + #{ui.repositories}">Mini Git Server - 管理后台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo h1 {
+            font-size: 1.5rem;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .language-selector {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem;
+            border-radius: 5px;
+        }
+        .language-selector a {
+            color: #bdc3c7;
+            text-decoration: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        .language-selector a:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+        .language-selector a.active {
+            color: white;
+            background: #3498db;
+            font-weight: bold;
+        }
+        .debug-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .nav {
+            background: #34495e;
+            padding: 0 2rem;
+        }
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 2rem;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 1rem 0;
+            display: block;
+            transition: color 0.3s;
+        }
+        .nav a:hover, .nav a.active {
+            color: #3498db;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .actions {
+            margin-bottom: 2rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .repo-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .repo-list h2 {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            margin: 0;
+        }
+        .repo-item {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .repo-item:last-child {
+            border-bottom: none;
+        }
+        .repo-name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .repo-actions a {
+            color: #3498db;
+            text-decoration: none;
+            margin-left: 1rem;
+        }
+        .repo-actions a:hover {
+            text-decoration: underline;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <h1 th:text="#{ui.title}">🔧 Mini Git Server</h1>
+            </div>
+            <div class="header-actions">
+                <div class="language-selector">
+                    <a href="?lang=zh" 
+                       th:class="${#locale.language == 'zh'} ? 'active' : ''"
+                       title="中文">中文</a>
+                    <a href="?lang=en" 
+                       th:class="${#locale.language == 'en'} ? 'active' : ''"
+                       title="English">EN</a>
+                    <a href="?lang=ja" 
+                       th:class="${#locale.language == 'ja'} ? 'active' : ''"
+                       title="日本語">日本語</a>
+                </div>
+                <div class="user-info">
+                    <span th:text="#{ui.welcome} + ', ' + ${username}">欢迎, admin</span>
+                    <a href="/logout" class="btn" th:text="#{ui.logout}">登出</a>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav class="nav">
+        <div class="nav-content">
+            <a href="/admin" class="active" th:text="#{ui.repositories}">仓库管理</a>
+            <a href="/admin/system" th:text="#{ui.system.info}">系统信息</a>
+            <a href="/actuator/health" th:text="#{ui.health.check}">系统健康</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <!-- 调试信息（临时） -->
+        <div class="debug-info" style="display: block;">
+            🔍 调试信息: 当前语言=<span th:text="${#locale}">locale</span> | 
+            语言代码=<span th:text="${#locale.language}">lang</span> | 
+            国家代码=<span th:text="${#locale.country}">country</span> |
+            <a href="/debug/locale" target="_blank" style="color: #0c5460;">详细调试信息</a>
+        </div>
+        
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3 th:text="#{ui.repo.count}">仓库总数</h3>
+                <div class="stat-value" th:text="${repoCount}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3 th:text="#{ui.storage.dir}">存储目录</h3>
+                <div style="font-size: 0.9rem; word-break: break-all;" th:text="${storageDir}">./data/repos</div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <a href="/admin/create" class="btn btn-success" th:text="'➕ ' + #{ui.create.repo}">➕ 创建新仓库</a>
+        </div>
+        
+        <div class="repo-list">
+            <h2 th:text="'📚 ' + #{ui.repo.list}">📚 仓库列表</h2>
+            <div th:if="${repositories.empty}" class="empty-state">
+                <p th:text="#{repo.empty.hint}">暂无仓库，点击上方按钮创建第一个仓库</p>
+            </div>
+            <div th:each="repo : ${repositories}" class="repo-item">
+                <div class="repo-name" th:text="${repo}">repository.git</div>
+                <div class="repo-actions">
+                    <a th:href="@{'/admin/repo/' + ${repo}}" th:text="'📋 ' + #{ui.repo.detail}">📋 详情</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

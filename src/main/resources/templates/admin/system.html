@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统信息 - Mini Git Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo h1 {
+            font-size: 1.5rem;
+        }
+        .nav {
+            background: #34495e;
+            padding: 0 2rem;
+        }
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 2rem;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 1rem 0;
+            display: block;
+            transition: color 0.3s;
+        }
+        .nav a:hover, .nav a.active {
+            color: #3498db;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+        }
+        .info-label {
+            font-weight: 500;
+            color: #333;
+        }
+        .info-value {
+            color: #666;
+        }
+        .progress-bar {
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 20px;
+            margin-top: 0.5rem;
+        }
+        .progress-fill {
+            background: #3498db;
+            height: 100%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <h1>🔧 Mini Git Server</h1>
+            </div>
+        </div>
+    </header>
+    
+    <nav class="nav">
+        <div class="nav-content">
+            <a href="/admin">仓库管理</a>
+            <a href="/admin/system" class="active">系统信息</a>
+            <a href="/actuator/health">系统健康</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="card">
+            <h2>💻 系统信息</h2>
+            <div class="info-grid">
+                <div class="info-label">Java 版本:</div>
+                <div class="info-value" th:text="${javaVersion}">1.8.0</div>
+                
+                <div class="info-label">操作系统:</div>
+                <div class="info-value" th:text="${osName + ' ' + osVersion}">Windows 10</div>
+                
+                <div class="info-label">应用版本:</div>
+                <div class="info-value">Mini Git Server 1.0.0</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>💾 内存使用情况</h2>
+            <div class="info-grid">
+                <div class="info-label">最大内存:</div>
+                <div class="info-value" th:text="${maxMemory}">512 MB</div>
+                
+                <div class="info-label">总内存:</div>
+                <div class="info-value" th:text="${totalMemory}">256 MB</div>
+                
+                <div class="info-label">已用内存:</div>
+                <div class="info-value" th:text="${usedMemory}">128 MB</div>
+                
+                <div class="info-label">可用内存:</div>
+                <div class="info-value" th:text="${freeMemory}">128 MB</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>💿 存储空间</h2>
+            <div class="info-grid">
+                <div class="info-label">存储目录:</div>
+                <div class="info-value" th:text="${storageDir}">/path/to/repos</div>
+                
+                <div class="info-label">总空间:</div>
+                <div class="info-value" th:text="${totalSpace}">100 GB</div>
+                
+                <div class="info-label">已用空间:</div>
+                <div class="info-value" th:text="${usedSpace}">50 GB</div>
+                
+                <div class="info-label">可用空间:</div>
+                <div class="info-value" th:text="${freeSpace}">50 GB</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
