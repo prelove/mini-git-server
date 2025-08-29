@@ -11,6 +11,11 @@
 target/
 **/target/
 
+# data
+ /data/
+data/
+**/data/
+
 # Common build/output directories
 /bin/
 /build/
