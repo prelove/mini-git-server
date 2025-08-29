@@ -1,0 +1,31 @@
+# Eclipse settings
+/.settings/
+/.project
+.classpath
+*.launch
+.metadata/
+.recommenders/
+
+# Build output (Maven / other)
+ /target/
+target/
+**/target/
+
+# Common build/output directories
+/bin/
+/build/
+/out/
+
+# IDEs
+/.vscode/
+/.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs, temp
+*.log
+*.tmp
+tmp/
+*.swp
