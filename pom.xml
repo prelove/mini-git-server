@@ -19,6 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>2.7.18</spring-boot.version>
         <jgit.version>5.13.3.202401111512-r</jgit.version>
+        <client.mainClass>com.minigit.util.GitClientMain</client.mainClass>
     </properties>
 
     <dependencyManagement>
@@ -90,25 +91,28 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-
-            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
+                <version>2.7.18</version>
                 <executions>
+                    <!-- 1) 服务器 JAR（和现在一样） -->
                     <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
+                        <id>repackage-server</id>
+                        <goals><goal>repackage</goal></goals>
+                        <configuration>
+                            <!-- 你的服务端主类 -->
+                            <mainClass>com.minigit.MiniGitServerApplication</mainClass>
+                        </configuration>
+                    </execution>
+                    <!-- 2) 客户端 JAR（附加一个 classifier=client） -->
+                    <execution>
+                        <id>repackage-client</id>
+                        <goals><goal>repackage</goal></goals>
+                        <configuration>
+                            <!-- 你的客户端入口类（你说的这个） -->
+                            <mainClass>com.minigit.util.GitClientMain</mainClass>
+                            <classifier>client</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

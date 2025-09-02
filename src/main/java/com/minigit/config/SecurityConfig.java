@@ -2,40 +2,41 @@ package com.minigit.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
-/**
- * 安全配置
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-    private final VcsProperties vcsProperties;
-
-    public SecurityConfig(VcsProperties vcsProperties) {
-        this.vcsProperties = vcsProperties;
-    }
-
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-            .csrf().disable()
-            .authorizeRequests()
-                .antMatchers("/debug/**").permitAll() // 临时允许调试端点
-                .antMatchers("/css/**", "/js/**", "/images/**").permitAll() // 静态资源
-                .antMatchers("/login").permitAll() // 登录页面
+                // 1) Git 端点不要被 CSRF 拦, 否则 push 会 403
+                .csrf().ignoringAntMatchers("/git/**", "/login").and()
+
+                // 2) 授权规则：/git/** 需要认证；静态资源与 /login 放行
+                .authorizeRequests()
+                .antMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/", "/login").permitAll()
+                .antMatchers("/git/**").authenticated()
                 .anyRequest().authenticated()
-            .and()
-            .formLogin()
+                .and()
+
+                // 3) 为 /git/** 提供 HTTP Basic（401 + WWW-Authenticate）
+                .httpBasic()
+                .and()
+
+                // 4) 仍然保留网站的表单登录（用于非 /git/** 的管理页面）
+                .formLogin()
                 .loginPage("/login")
                 .loginProcessingUrl("/login")
                 .defaultSuccessUrl("/admin", true)
@@ -43,31 +44,41 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .usernameParameter("username")
                 .passwordParameter("password")
                 .permitAll()
-            .and()
-            .logout()
+                .and()
+                .logout()
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout=true")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
                 .permitAll()
-            .and()
-            .httpBasic(); // 保留HTTP Basic认证用于API和Git操作
+                .and()
+
+                // 5) 关键：把 /git/** 的未认证入口改成 Basic，而不是重定向到 /login
+                .exceptionHandling()
+                .defaultAuthenticationEntryPointFor(
+                        gitBasicEntryPoint(), new AntPathRequestMatcher("/git/**"));
     }
 
     @Bean
-    @Override
-    public UserDetailsService userDetailsService() {
-        UserDetails user = User.builder()
-            .username(vcsProperties.getAuth().getUser())
-            .password(passwordEncoder().encode(vcsProperties.getAuth().getPass()))
-            .roles("USER", "ADMIN")
-            .build();
-
-        return new InMemoryUserDetailsManager(user);
+    public BasicAuthenticationEntryPoint gitBasicEntryPoint() {
+        BasicAuthenticationEntryPoint ep = new BasicAuthenticationEntryPoint();
+        ep.setRealmName("mini-git");
+        return ep;
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // 支持 {bcrypt}、{noop} 等多种编码前缀的“委派编码器”
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
+
+    @Bean
+    public UserDetailsService userDetailsService(PasswordEncoder encoder) {
+        // 测试账号：git / 123456
+        return new InMemoryUserDetailsManager(
+                User.withUsername("admin")
+                        .password(encoder.encode("admin123"))
+                        .roles("GIT")
+                        .build()
+        );
+    }
+
 }
