@@ -256,6 +256,16 @@
             color: #0c5460;
             border: 1px solid #bee5eb;
         }
+        .breadcrumbs {
+            margin-bottom: 1rem;
+        }
+        .breadcrumbs a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .breadcrumbs a:hover {
+            text-decoration: underline;
+        }
     </style>
     <script>
         function switchTab(tabName) {
@@ -392,16 +402,32 @@ git push -u origin main'">推送命令</pre>
             
             <!-- 文件列表标签 -->
             <div id="files-content" class="tab-content active">
+                <div class="breadcrumbs" th:if="${breadcrumbs != null}">
+                    <span th:each="crumb,iter : ${breadcrumbs}">
+                        <span th:if="${iter.index > 0}"> / </span>
+                        <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${crumb.path != '' ? '&path=' + crumb.path : ''}|}"
+                           th:text="${iter.index == 0 ? '根目录' : crumb.name}"></a>
+                    </span>
+                </div>
                 <div th:if="${files != null and !files.empty}" class="file-list">
                     <div class="file-header">
                         <div>文件名</div>
                         <div>大小</div>
                         <div>类型</div>
                     </div>
+                    <div th:if="${currentPath != ''}" class="file-item">
+                        <div class="file-name">
+                            <span class="file-icon">🔙</span>
+                            <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${parentPath != '' ? '&path=' + parentPath : ''}|}">..</a>
+                        </div>
+                        <div>-</div>
+                        <div>目录</div>
+                    </div>
                     <div th:each="file : ${files}" class="file-item">
                         <div class="file-name">
                             <span class="file-icon" th:text="${file.type == 'directory' ? '📁' : '📄'}">📄</span>
-                            <span th:text="${file.name}">filename</span>
+                            <a th:if="${file.type == 'directory'}" th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}&path=${file.path}|}" th:text="${file.name}"></a>
+                            <span th:if="${file.type != 'directory'}" th:text="${file.name}"></span>
                         </div>
                         <div th:text="${file.sizeFormatted}">1.2 KB</div>
                         <div th:text="${file.type == 'directory' ? '目录' : '文件'}">文件</div>
