@@ -73,6 +73,27 @@ public class WebController {
     }
 
     /**
+     * 创建新分支
+     */
+    @PostMapping("/admin/repo/{name}/branch")
+    public String createBranch(@PathVariable String name,
+                               @RequestParam("fromBranch") String fromBranch,
+                               @RequestParam("newBranch") String newBranch,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            File repoDir = repositoryService.getRepositoryPath(normalizedName);
+            gitRepositoryService.createBranch(repoDir, fromBranch, newBranch);
+            redirectAttributes.addFlashAttribute("success", "分支创建成功: " + newBranch);
+            return "redirect:/admin/repo/" + normalizedName + "?branch=" + newBranch;
+        } catch (Exception e) {
+            logger.error("Failed to create branch {} from {}", newBranch, fromBranch, e);
+            redirectAttributes.addFlashAttribute("error", "创建分支失败: " + e.getMessage());
+            return "redirect:/admin/repo/" + name + "?branch=" + fromBranch;
+        }
+    }
+
+    /**
      * 创建仓库页面
      */
     @GetMapping("/admin/create")

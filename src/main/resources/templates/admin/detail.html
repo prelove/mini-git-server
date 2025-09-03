@@ -347,7 +347,11 @@
                 详细信息: <span th:text="${gitErrorDetail}"></span>
             </div>
         </div>
-        
+
+        <!-- 操作反馈 -->
+        <div th:if="${success}" class="alert alert-info" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
         <!-- 空仓库提示 -->
         <div th:if="${isEmpty}" class="card">
             <div class="empty-repo">
@@ -371,24 +375,29 @@ git push -u origin main'">推送命令</pre>
         </div>
         
         <!-- Git内容（非空仓库） -->
-        <div th:unless="${isEmpty}" class="card">
+            <div th:unless="${isEmpty}" class="card">
             <!-- 分支选择器 -->
             <div th:if="${branches != null and !branches.empty}" class="branch-selector">
                 <span>🌿 分支:</span>
                 <select id="branchSelect" onchange="switchBranch()" th:value="${currentBranch}">
-                    <option th:each="branch : ${branches}" 
-                            th:value="${branch.shortName}" 
+                    <option th:each="branch : ${branches}"
+                            th:value="${branch.shortName}"
                             th:text="${branch.shortName + (branch.default ? ' (默认)' : '')}"
                             th:selected="${branch.shortName == currentBranch}">
                         main
                     </option>
                 </select>
                 <span th:if="${branches.size() > 0}" th:text="'共 ' + ${branches.size()} + ' 个分支'">共 1 个分支</span>
+                <form th:action="@{|/admin/repo/${repoName}/branch|}" method="post" style="display:flex; gap:0.5rem; align-items:center;">
+                    <input type="hidden" name="fromBranch" th:value="${currentBranch}" />
+                    <input type="text" name="newBranch" placeholder="新分支名称" style="padding:0.3rem;" />
+                    <button type="submit" class="btn btn-small">新增分支</button>
+                </form>
             </div>
-            
+
             <!-- 状态信息 -->
             <div class="alert alert-info" th:if="${currentBranch}">
-                当前分支: <strong th:text="${currentBranch}">master</strong> | 
+                当前分支: <strong th:text="${currentBranch}">master</strong> |
                 提交数: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
                 文件数: <strong th:text="${files != null ? files.size() : 0}">0</strong>
             </div>
