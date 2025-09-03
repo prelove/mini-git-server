@@ -13,8 +13,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Web管理界面控制器
@@ -172,7 +175,38 @@ public class WebController {
             model.addAttribute("commits", null);
             model.addAttribute("files", null);
             model.addAttribute("currentBranch", null);
-            model.addAttribute("currentPath", path == null ? "" : path);
+
+            String currentPath = path == null ? "" : path;
+            model.addAttribute("currentPath", currentPath);
+
+            // 构建面包屑导航数据
+            List<Map<String, String>> breadcrumbs = new ArrayList<>();
+            Map<String, String> rootCrumb = new HashMap<>();
+            rootCrumb.put("name", "root");
+            rootCrumb.put("path", "");
+            breadcrumbs.add(rootCrumb);
+            if (!currentPath.isEmpty()) {
+                String[] parts = currentPath.split("/");
+                StringBuilder builder = new StringBuilder();
+                for (String part : parts) {
+                    if (builder.length() > 0) {
+                        builder.append('/');
+                    }
+                    builder.append(part);
+                    Map<String, String> crumb = new HashMap<>();
+                    crumb.put("name", part);
+                    crumb.put("path", builder.toString());
+                    breadcrumbs.add(crumb);
+                }
+            }
+            model.addAttribute("breadcrumbs", breadcrumbs);
+
+            String parentPath = "";
+            if (!currentPath.isEmpty()) {
+                int idx = currentPath.lastIndexOf('/');
+                parentPath = idx > 0 ? currentPath.substring(0, idx) : "";
+            }
+            model.addAttribute("parentPath", parentPath);
             
             if (!isEmpty) {
                 logger.info("=== Loading Git information for non-empty repository ===");
@@ -214,7 +248,7 @@ public class WebController {
                     // 获取提交日志
                     try {
                         logger.info("Step 2: Loading commits for branch: {}", currentBranch);
-                        List<GitRepositoryService.CommitInfo> commits = gitRepositoryService.getCommitLog(repoDir, 20);
+                        List<GitRepositoryService.CommitInfo> commits = gitRepositoryService.getCommitLog(repoDir, currentBranch, 20);
                         logger.info("SUCCESS: Found {} commits", commits != null ? commits.size() : 0);
                         
                         if (commits != null && !commits.isEmpty()) {
