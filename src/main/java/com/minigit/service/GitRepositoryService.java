@@ -6,7 +6,9 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -330,22 +332,32 @@ public class GitRepositoryService {
                     return files;
                 }
                 
+                RevTree tree = repository.parseCommit(branchId).getTree();
+
                 try (TreeWalk treeWalk = new TreeWalk(repository)) {
-                    treeWalk.addTree(repository.parseCommit(branchId).getTree());
-                    treeWalk.setRecursive(false);
-                    
-                    // 如果指定了路径，进入该路径
                     if (path != null && !path.isEmpty() && !"/".equals(path)) {
-                        treeWalk.setFilter(org.eclipse.jgit.treewalk.filter.PathFilter.create(path));
-                        if (treeWalk.next()) {
-                            treeWalk.enterSubtree();
+                        try (TreeWalk pathWalk = TreeWalk.forPath(repository, path, tree)) {
+                            if (pathWalk == null || !pathWalk.isSubtree()) {
+                                logger.debug("Path {} not found in repository", path);
+                                return files;
+                            }
+                            // Add the subtree referenced by the specified path
+                            treeWalk.addTree(pathWalk.getTree(0, CanonicalTreeParser.class));
                         }
+                    } else {
+                        treeWalk.addTree(tree);
                     }
-                    
+
+                    treeWalk.setRecursive(false);
+
                     while (treeWalk.next()) {
                         FileInfo info = new FileInfo();
                         info.setName(treeWalk.getNameString());
-                        info.setPath(treeWalk.getPathString());
+                        String filePath = treeWalk.getPathString();
+                        if (path != null && !path.isEmpty()) {
+                            filePath = path + "/" + filePath;
+                        }
+                        info.setPath(filePath);
                         info.setType(treeWalk.isSubtree() ? "directory" : "file");
                         
                         if (!treeWalk.isSubtree()) {
@@ -469,6 +481,38 @@ public class GitRepositoryService {
         } catch (Exception e) {
             logger.warn("Failed to check if repository is empty: {}", e.getMessage());
             return true;
+        }
+    }
+
+    /**
+     * 创建新分支
+     */
+    public void createBranch(File repoDir, String sourceBranch, String newBranch) throws Exception {
+        try (Repository repository = new FileRepositoryBuilder()
+                .setGitDir(repoDir)
+                .setMustExist(true)
+                .build();
+             Git git = new Git(repository)) {
+
+            if (sourceBranch == null || sourceBranch.isEmpty()) {
+                sourceBranch = getDefaultBranch(repository);
+                if (sourceBranch == null) {
+                    throw new IllegalArgumentException("Source branch not found");
+                }
+            }
+
+            if (!sourceBranch.startsWith("refs/heads/")) {
+                sourceBranch = "refs/heads/" + sourceBranch;
+            }
+
+            if (repository.resolve(sourceBranch) == null) {
+                throw new IllegalArgumentException("Source branch not found: " + sourceBranch);
+            }
+
+            git.branchCreate()
+                .setName(newBranch)
+                .setStartPoint(sourceBranch)
+                .call();
         }
     }
 }

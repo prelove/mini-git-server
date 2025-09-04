@@ -256,6 +256,16 @@
             color: #0c5460;
             border: 1px solid #bee5eb;
         }
+        .breadcrumbs {
+            margin-bottom: 1rem;
+        }
+        .breadcrumbs a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .breadcrumbs a:hover {
+            text-decoration: underline;
+        }
     </style>
     <script>
         function switchTab(tabName) {
@@ -337,7 +347,11 @@
                 详细信息: <span th:text="${gitErrorDetail}"></span>
             </div>
         </div>
-        
+
+        <!-- 操作反馈 -->
+        <div th:if="${success}" class="alert alert-info" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
         <!-- 空仓库提示 -->
         <div th:if="${isEmpty}" class="card">
             <div class="empty-repo">
@@ -361,24 +375,29 @@ git push -u origin main'">推送命令</pre>
         </div>
         
         <!-- Git内容（非空仓库） -->
-        <div th:unless="${isEmpty}" class="card">
+            <div th:unless="${isEmpty}" class="card">
             <!-- 分支选择器 -->
             <div th:if="${branches != null and !branches.empty}" class="branch-selector">
                 <span>🌿 分支:</span>
                 <select id="branchSelect" onchange="switchBranch()" th:value="${currentBranch}">
-                    <option th:each="branch : ${branches}" 
-                            th:value="${branch.shortName}" 
+                    <option th:each="branch : ${branches}"
+                            th:value="${branch.shortName}"
                             th:text="${branch.shortName + (branch.default ? ' (默认)' : '')}"
                             th:selected="${branch.shortName == currentBranch}">
                         main
                     </option>
                 </select>
                 <span th:if="${branches.size() > 0}" th:text="'共 ' + ${branches.size()} + ' 个分支'">共 1 个分支</span>
+                <form th:action="@{|/admin/repo/${repoName}/branch|}" method="post" style="display:flex; gap:0.5rem; align-items:center;">
+                    <input type="hidden" name="fromBranch" th:value="${currentBranch}" />
+                    <input type="text" name="newBranch" placeholder="新分支名称" style="padding:0.3rem;" />
+                    <button type="submit" class="btn btn-small">新增分支</button>
+                </form>
             </div>
-            
+
             <!-- 状态信息 -->
             <div class="alert alert-info" th:if="${currentBranch}">
-                当前分支: <strong th:text="${currentBranch}">master</strong> | 
+                当前分支: <strong th:text="${currentBranch}">master</strong> |
                 提交数: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
                 文件数: <strong th:text="${files != null ? files.size() : 0}">0</strong>
             </div>
@@ -392,16 +411,32 @@ git push -u origin main'">推送命令</pre>
             
             <!-- 文件列表标签 -->
             <div id="files-content" class="tab-content active">
+                <div class="breadcrumbs" th:if="${breadcrumbs != null}">
+                    <span th:each="crumb,iter : ${breadcrumbs}">
+                        <span th:if="${iter.index > 0}"> / </span>
+                        <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${crumb.path != '' ? '&path=' + crumb.path : ''}|}"
+                           th:text="${iter.index == 0 ? '根目录' : crumb.name}"></a>
+                    </span>
+                </div>
                 <div th:if="${files != null and !files.empty}" class="file-list">
                     <div class="file-header">
                         <div>文件名</div>
                         <div>大小</div>
                         <div>类型</div>
                     </div>
+                    <div th:if="${currentPath != ''}" class="file-item">
+                        <div class="file-name">
+                            <span class="file-icon">🔙</span>
+                            <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${parentPath != '' ? '&path=' + parentPath : ''}|}">..</a>
+                        </div>
+                        <div>-</div>
+                        <div>目录</div>
+                    </div>
                     <div th:each="file : ${files}" class="file-item">
                         <div class="file-name">
                             <span class="file-icon" th:text="${file.type == 'directory' ? '📁' : '📄'}">📄</span>
-                            <span th:text="${file.name}">filename</span>
+                            <a th:if="${file.type == 'directory'}" th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}&path=${file.path}|}" th:text="${file.name}"></a>
+                            <span th:if="${file.type != 'directory'}" th:text="${file.name}"></span>
                         </div>
                         <div th:text="${file.sizeFormatted}">1.2 KB</div>
                         <div th:text="${file.type == 'directory' ? '目录' : '文件'}">文件</div>
