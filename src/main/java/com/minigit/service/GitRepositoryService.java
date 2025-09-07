@@ -340,7 +340,7 @@ public class GitRepositoryService {
                             logger.debug("Path {} not found in repository", path);
                             return files;
                         }
-                        treeWalk.addTree(pathWalk.getTree(0));
+                        treeWalk.addTree(pathWalk.getObjectId(0));
                     } else {
                         treeWalk.addTree(tree);
                     }

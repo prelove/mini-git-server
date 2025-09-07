@@ -1,0 +1,13 @@
+[package]
+name = "minigit-tauri"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 使用在 crates.io 上可用的 tauri 2.x 版本（2.4.1 在索引中可用）
+tauri = { version = "2.4.1", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+
+[build-dependencies]
+# tauri-build 版本与 tauri 对应，使用可用的 2.4.1
+tauri-build = { version = "2.4.1", features = [] }
