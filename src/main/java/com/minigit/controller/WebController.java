@@ -2,22 +2,35 @@ package com.minigit.controller;
 
 import com.minigit.service.GitRepositoryService;
 import com.minigit.service.RepositoryService;
+import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.parser.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Web管理界面控制器
@@ -28,16 +41,34 @@ public class WebController {
 
     private static final Logger logger = LoggerFactory.getLogger(WebController.class);
 
+    private static final Set<String> MARKDOWN_EXTENSIONS = new HashSet<>(Arrays.asList(
+        "md", "markdown", "mkd", "mkdn"
+    ));
+    private static final Set<String> TEXT_EXTENSIONS = new HashSet<>(Arrays.asList(
+        "txt", "log", "cfg", "ini", "json", "yml", "yaml", "xml", "html", "htm", "css",
+        "js", "ts", "tsx", "jsx", "java", "kt", "kts", "groovy", "py", "rb", "go",
+        "rs", "c", "cpp", "h", "hpp", "cs", "swift", "php", "sql", "sh", "bat",
+        "gradle", "properties", "pom", "mdx", "csv"
+    ));
+    private static final Set<String> IMAGE_EXTENSIONS = new HashSet<>(Arrays.asList(
+        "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico"
+    ));
+    private static final Set<String> PDF_EXTENSIONS = new HashSet<>(Arrays.asList("pdf"));
+
     private final RepositoryService repositoryService;
     private final GitRepositoryService gitRepositoryService;
     private final MessageSource messageSource;
+    private final Parser markdownParser;
+    private final HtmlRenderer markdownRenderer;
 
-    public WebController(RepositoryService repositoryService, 
-                        GitRepositoryService gitRepositoryService, 
+    public WebController(RepositoryService repositoryService,
+                        GitRepositoryService gitRepositoryService,
                         MessageSource messageSource) {
         this.repositoryService = repositoryService;
         this.gitRepositoryService = gitRepositoryService;
         this.messageSource = messageSource;
+        this.markdownParser = Parser.builder().build();
+        this.markdownRenderer = HtmlRenderer.builder().build();
     }
 
     /**
@@ -146,7 +177,7 @@ public class WebController {
      * 仓库详情页面
      */
     @GetMapping("/admin/repo/{name}")
-    public String repoDetail(@PathVariable String name, 
+    public String repoDetail(@PathVariable String name,
                             @RequestParam(value = "branch", required = false) String branch,
                             @RequestParam(value = "path", required = false) String path,
                             @RequestParam(value = "debug", required = false) boolean debug,
@@ -331,6 +362,84 @@ public class WebController {
         }
     }
 
+    @GetMapping("/admin/repo/{name}/file")
+    public String viewFile(@PathVariable String name,
+                           @RequestParam("path") String path,
+                           @RequestParam(value = "branch", required = false) String branch,
+                           Model model) {
+        String normalizedName = repositoryService.normalizeRepositoryName(name);
+        if (!repositoryService.repositoryExists(normalizedName)) {
+            model.addAttribute("error", getMessage("repo.not.found", normalizedName));
+            return "error";
+        }
+
+        File repoDir = repositoryService.getRepositoryPath(normalizedName);
+        String normalizedPath = normalizeFilePath(path);
+
+        model.addAttribute("repoName", normalizedName);
+        model.addAttribute("path", normalizedPath);
+
+        try {
+            String resolvedBranch = resolveBranchForFile(repoDir, branch);
+            if (resolvedBranch == null) {
+                model.addAttribute("error", "未找到可用的分支用于预览文件");
+                return "admin/file-viewer";
+            }
+
+            GitRepositoryService.FileInfo fileInfo = gitRepositoryService.getFileInfo(repoDir, resolvedBranch, normalizedPath);
+            if (fileInfo == null || !"file".equals(fileInfo.getType())) {
+                model.addAttribute("error", "无法预览目录: " + normalizedPath);
+                return "admin/file-viewer";
+            }
+
+            String fileName = fileInfo.getName();
+            String mimeType = guessMimeType(fileName);
+            String previewType = determinePreviewType(fileName, mimeType);
+
+            model.addAttribute("branch", resolvedBranch);
+            model.addAttribute("fileName", fileName);
+            model.addAttribute("fileSize", fileInfo.getSize());
+            model.addAttribute("fileSizeFormatted", fileInfo.getSizeFormatted());
+            model.addAttribute("previewType", previewType);
+            model.addAttribute("mimeType", mimeType);
+
+            if ("markdown".equals(previewType) || "text".equals(previewType)) {
+                byte[] contentBytes = gitRepositoryService.getFileContent(repoDir, resolvedBranch, normalizedPath);
+                String textContent = new String(contentBytes, StandardCharsets.UTF_8);
+                if ("markdown".equals(previewType)) {
+                    String html = markdownRenderer.render(markdownParser.parse(textContent));
+                    model.addAttribute("markdownHtml", html);
+                }
+                model.addAttribute("textContent", textContent);
+            }
+
+            model.addAttribute("isPreviewSupported", !"binary".equals(previewType));
+            return "admin/file-viewer";
+        } catch (IllegalArgumentException e) {
+            logger.warn("Failed to preview file {}/{}: {}", normalizedName, normalizedPath, e.getMessage());
+            model.addAttribute("error", e.getMessage());
+            return "admin/file-viewer";
+        } catch (Exception e) {
+            logger.error("Failed to preview file {}/{}", normalizedName, normalizedPath, e);
+            model.addAttribute("error", "加载文件内容失败: " + e.getMessage());
+            return "admin/file-viewer";
+        }
+    }
+
+    @GetMapping("/admin/repo/{name}/file/raw")
+    public ResponseEntity<byte[]> rawFile(@PathVariable String name,
+                                          @RequestParam("path") String path,
+                                          @RequestParam(value = "branch", required = false) String branch) {
+        return serveFileContent(name, path, branch, false);
+    }
+
+    @GetMapping("/admin/repo/{name}/file/download")
+    public ResponseEntity<byte[]> downloadFile(@PathVariable String name,
+                                               @RequestParam("path") String path,
+                                               @RequestParam(value = "branch", required = false) String branch) {
+        return serveFileContent(name, path, branch, true);
+    }
+
     /**
      * 系统信息页面
      */
@@ -417,6 +526,130 @@ public class WebController {
             return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
         } else {
             return String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+        }
+    }
+
+    private String determinePreviewType(String fileName, String mimeType) {
+        String extension = "";
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex >= 0 && dotIndex < fileName.length() - 1) {
+            extension = fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
+        }
+
+        if (MARKDOWN_EXTENSIONS.contains(extension)) {
+            return "markdown";
+        }
+        if (IMAGE_EXTENSIONS.contains(extension) || (mimeType != null && mimeType.startsWith("image/"))) {
+            return "image";
+        }
+        if (PDF_EXTENSIONS.contains(extension) || "application/pdf".equalsIgnoreCase(mimeType)) {
+            return "pdf";
+        }
+        if (TEXT_EXTENSIONS.contains(extension)) {
+            return "text";
+        }
+        if (mimeType != null && (mimeType.startsWith("text/") || mimeType.contains("json") || mimeType.contains("xml"))) {
+            return "text";
+        }
+        return "binary";
+    }
+
+    private String guessMimeType(String fileName) {
+        String mimeType = URLConnection.guessContentTypeFromName(fileName);
+        if (mimeType == null) {
+            if (MARKDOWN_EXTENSIONS.contains(getExtension(fileName))) {
+                return "text/markdown";
+            }
+            if (TEXT_EXTENSIONS.contains(getExtension(fileName))) {
+                return "text/plain";
+            }
+        }
+        return mimeType;
+    }
+
+    private String getExtension(String fileName) {
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex >= 0 && dotIndex < fileName.length() - 1) {
+            return fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
+        }
+        return "";
+    }
+
+    private String normalizeFilePath(String path) {
+        if (path == null) {
+            return null;
+        }
+        return path.replaceAll("^/+", "");
+    }
+
+    private String resolveBranchForFile(File repoDir, String branch) throws Exception {
+        if (branch != null && !branch.trim().isEmpty()) {
+            return branch;
+        }
+
+        List<GitRepositoryService.BranchInfo> branches = gitRepositoryService.getBranches(repoDir);
+        if (branches == null || branches.isEmpty()) {
+            return null;
+        }
+
+        return branches.stream()
+            .filter(GitRepositoryService.BranchInfo::isDefault)
+            .map(GitRepositoryService.BranchInfo::getShortName)
+            .findFirst()
+            .orElse(branches.get(0).getShortName());
+    }
+
+    private ResponseEntity<byte[]> serveFileContent(String name, String path, String branch, boolean download) {
+        String normalizedName = repositoryService.normalizeRepositoryName(name);
+        if (!repositoryService.repositoryExists(normalizedName)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        File repoDir = repositoryService.getRepositoryPath(normalizedName);
+        String normalizedPath = normalizeFilePath(path);
+
+        try {
+            String resolvedBranch = resolveBranchForFile(repoDir, branch);
+            if (resolvedBranch == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            GitRepositoryService.FileInfo fileInfo = gitRepositoryService.getFileInfo(repoDir, resolvedBranch, normalizedPath);
+            if (fileInfo == null || !"file".equals(fileInfo.getType())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            byte[] content = gitRepositoryService.getFileContent(repoDir, resolvedBranch, normalizedPath);
+            String fileName = fileInfo.getName();
+            String mimeType = guessMimeType(fileName);
+            MediaType mediaType = parseMediaType(mimeType);
+
+            ContentDisposition disposition = (download ? ContentDisposition.attachment() : ContentDisposition.inline())
+                .filename(fileName, StandardCharsets.UTF_8)
+                .build();
+
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(mediaType)
+                .contentLength(content.length)
+                .body(content);
+        } catch (IllegalArgumentException e) {
+            logger.warn("File access validation failed for {}/{}: {}", normalizedName, normalizedPath, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e) {
+            logger.error("Failed to serve file {}/{}", normalizedName, normalizedPath, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private MediaType parseMediaType(String mimeType) {
+        if (mimeType == null || mimeType.isEmpty()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+        try {
+            return MediaType.parseMediaType(mimeType);
+        } catch (InvalidMediaTypeException e) {
+            return MediaType.APPLICATION_OCTET_STREAM;
         }
     }
 }

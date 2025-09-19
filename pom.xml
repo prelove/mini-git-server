@@ -59,6 +59,13 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
+        <!-- Markdown Rendering -->
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+
         <!-- JGit HTTP Support -->
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
