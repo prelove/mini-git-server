@@ -575,17 +575,26 @@ public class GitRepositoryService {
      * 检查仓库是否为空
      */
     public boolean isEmptyRepository(File repoDir) {
-        try {
-            try (Repository repository = new FileRepositoryBuilder()
-                    .setGitDir(repoDir)
-                    .setMustExist(true)
-                    .build()) {
-                
-                Ref head = repository.exactRef("HEAD");
-                boolean isEmpty = (head == null || head.getObjectId() == null);
-                logger.debug("Repository {} is empty: {}", repoDir.getAbsolutePath(), isEmpty);
-                return isEmpty;
+        try (Repository repository = new FileRepositoryBuilder()
+                .setGitDir(repoDir)
+                .setMustExist(true)
+                .build()) {
+            // 1) 尝试解析 HEAD
+            ObjectId headId = repository.resolve("HEAD");
+            if (headId != null) {
+                logger.debug("Repository {} is empty: false (HEAD resolved)", repoDir.getAbsolutePath());
+                return false;
             }
+            // 2) 即使 HEAD 未指向对象，也检查是否存在任意本地分支
+            try {
+                List<Ref> localHeads = repository.getRefDatabase().getRefsByPrefix("refs/heads/");
+                if (localHeads != null && !localHeads.isEmpty()) {
+                    logger.debug("Repository {} is empty: false (found {} local branches)", repoDir.getAbsolutePath(), localHeads.size());
+                    return false;
+                }
+            } catch (Exception ignored) {}
+            logger.debug("Repository {} is empty: true (no HEAD and no branches)", repoDir.getAbsolutePath());
+            return true;
         } catch (Exception e) {
             logger.warn("Failed to check if repository is empty: {}", e.getMessage());
             return true;
@@ -624,3 +633,4 @@ public class GitRepositoryService {
         }
     }
 }
+

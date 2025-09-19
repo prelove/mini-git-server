@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * Web管理界面控制器
@@ -181,8 +182,9 @@ public class WebController {
                             @RequestParam(value = "branch", required = false) String branch,
                             @RequestParam(value = "path", required = false) String path,
                             @RequestParam(value = "debug", required = false) boolean debug,
-                            Model model) {
-        
+                            Model model,
+                            HttpServletRequest request) {
+
         String normalizedName = null;
         File repoDir = null;
         
@@ -201,7 +203,7 @@ public class WebController {
             
             model.addAttribute("repoName", normalizedName);
             model.addAttribute("repoPath", repoDir.getAbsolutePath());
-            model.addAttribute("cloneUrl", getCloneUrl(normalizedName));
+            model.addAttribute("cloneUrl", getCloneUrl(normalizedName, request));
             model.addAttribute("repoSize", getDirectorySize(repoDir));
             
             // 检查是否为空仓库
@@ -487,11 +489,103 @@ public class WebController {
     }
 
     /**
+     * 根据请求获取基础URL，尊重反向代理头
+     */
+    private String getBaseUrl(HttpServletRequest request) {
+        // 优先使用 X-Forwarded-* 头
+        String scheme = getFirstHeader(request, "X-Forwarded-Proto");
+        if (scheme == null || scheme.isEmpty()) {
+            scheme = request.getScheme();
+        }
+
+        String forwardedHost = getFirstHeader(request, "X-Forwarded-Host");
+        String host;
+        if (forwardedHost != null && !forwardedHost.isEmpty()) {
+            host = forwardedHost;
+        } else {
+            // Host 头可能包含端口
+            String hostHeader = request.getHeader("Host");
+            if (hostHeader != null && !hostHeader.isEmpty()) {
+                host = hostHeader;
+            } else {
+                host = request.getServerName();
+                int serverPort = request.getServerPort();
+                if (serverPort > 0) {
+                    host = host + ":" + serverPort;
+                }
+            }
+        }
+
+        // 解析 host 与 port，支持 [IPv6]:port 格式
+        String hostname;
+        Integer portFromHost = null;
+        if (host.startsWith("[")) {
+            int rb = host.indexOf(']');
+            if (rb > 0) {
+                hostname = host.substring(1, rb);
+                if (rb + 1 < host.length() && host.charAt(rb + 1) == ':') {
+                    try {
+                        portFromHost = Integer.parseInt(host.substring(rb + 2));
+                    } catch (NumberFormatException ignored) {}
+                }
+            } else {
+                // 不完整的 IPv6 表示，兜底按原样处理
+                hostname = host;
+            }
+        } else {
+            int colon = host.lastIndexOf(":");
+            if (colon > -1 && colon < host.length() - 1) {
+                hostname = host.substring(0, colon);
+                try {
+                    portFromHost = Integer.parseInt(host.substring(colon + 1));
+                } catch (NumberFormatException e) {
+                    hostname = host; // 解析失败则回退
+                }
+            } else {
+                hostname = host;
+            }
+        }
+
+        int port = -1;
+        String portHeader = getFirstHeader(request, "X-Forwarded-Port");
+        if (portHeader != null) {
+            try {
+                port = Integer.parseInt(portHeader);
+            } catch (NumberFormatException ignored) {}
+        }
+        if (port <= 0) {
+            port = (portFromHost != null) ? portFromHost : request.getServerPort();
+        }
+
+        boolean isStandard = ("http".equalsIgnoreCase(scheme) && port == 80)
+                || ("https".equalsIgnoreCase(scheme) && port == 443);
+        StringBuilder base = new StringBuilder();
+        base.append(scheme).append("://");
+        // 输出时对 IPv6 加[]
+        if (hostname != null && hostname.contains(":") && !hostname.startsWith("[")) {
+            base.append('[').append(hostname).append(']');
+        } else {
+            base.append(hostname);
+        }
+        if (!isStandard && port > 0) {
+            base.append(":").append(port);
+        }
+        return base.toString();
+    }
+
+    private String getFirstHeader(HttpServletRequest request, String name) {
+        String value = request.getHeader(name);
+        if (value == null) return null;
+        int comma = value.indexOf(',');
+        return comma > 0 ? value.substring(0, comma).trim() : value.trim();
+    }
+
+    /**
      * 获取克隆URL
      */
-    private String getCloneUrl(String repoName) {
-        // 这里简化处理，实际应该从请求中获取主机和端口
-        return String.format("http://localhost:8080/git/%s", repoName);
+    private String getCloneUrl(String repoName, HttpServletRequest request) {
+        String base = getBaseUrl(request);
+        return base + "/git/" + repoName;
     }
 
     /**
@@ -653,3 +747,4 @@ public class WebController {
         }
     }
 }
+
