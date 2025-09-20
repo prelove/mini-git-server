@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${fileName != null ? fileName : '文件预览'} + ' - Mini Git Server'">文件预览 - Mini Git Server</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pptxjs@2.12.0/dist/pptxjs.min.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #2c3e50;
+        }
+        .header {
+            background: #2c3e50;
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem 3rem;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 0.5rem 1rem;
+        }
+        .info-label {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }
+        .info-value {
+            font-weight: 600;
+            word-break: break-all;
+        }
+        .actions {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: #3498db;
+            color: #fff;
+            padding: 0.6rem 1.3rem;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .btn.secondary {
+            background: #95a5a6;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn.secondary:hover {
+            background: #7f8c8d;
+        }
+        .preview-card {
+            min-height: 360px;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+        .code-block {
+            font-family: "Fira Code", "Consolas", "Monaco", monospace;
+        }
+        .markdown-body {
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            border-bottom: 1px solid #ecf0f1;
+            padding-bottom: 0.35rem;
+        }
+        .markdown-body pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .preview-placeholder {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 2rem 1rem;
+        }
+        .image-preview {
+            max-width: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .pdf-frame {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            border-radius: 6px;
+            box-shadow: inset 0 0 0 1px #ecf0f1;
+        }
+        .docx-wrapper {
+            background: #ffffff;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: inset 0 0 0 1px #e0e6ed;
+        }
+        .excel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .excel-container table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .excel-container th,
+        .excel-container td {
+            border: 1px solid #d0d7de;
+            padding: 0.45rem 0.6rem;
+            font-size: 0.9rem;
+        }
+        .excel-container th {
+            background: #f4f6f8;
+        }
+        .alert {
+            margin-top: 1rem;
+            background: #fff6d5;
+            color: #856404;
+            padding: 0.85rem 1rem;
+            border-radius: 6px;
+            border: 1px solid #ffe9a8;
+        }
+        .preview-meta {
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        .office-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 260px;
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+        .office-hint {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<header class="header">
+    <div>
+        <span>📁</span>
+        <span th:text="${repoName}">repository.git</span>
+    </div>
+    <div>
+        <a th:if="${backUrl != null}" th:href="${backUrl}">← 返回仓库</a>
+    </div>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h2>📄 <span th:text="${fileName}">文件名</span></h2>
+        <div class="info-grid">
+            <div class="info-label">分支</div>
+            <div class="info-value" th:text="${branch != null ? branch : '默认分支'}">main</div>
+            <div class="info-label">路径</div>
+            <div class="info-value" th:text="${filePath}">README.md</div>
+            <div class="info-label">大小</div>
+            <div class="info-value" th:text="${fileSizeFormatted}">1.2 KB</div>
+            <div class="info-label">类型</div>
+            <div class="info-value" th:text="${previewType}">text</div>
+        </div>
+        <div class="actions">
+            <a th:href="${downloadUrl}" class="btn">⬇️ 下载文件</a>
+            <a th:href="${rawUrl}" class="btn secondary" target="_blank" rel="noopener">查看原始内容</a>
+        </div>
+        <div class="preview-meta" th:if="${tooLargeForInline}">提示: 文件超过 1 MB，已禁用直接渲染，请下载或查看原始内容。</div>
+        <div class="preview-meta" th:if="${binaryDetected}">提示: 文件包含二进制内容，无法作为文本渲染。</div>
+    </div>
+
+    <div class="card preview-card">
+        <div th:if="${previewAvailable}">
+            <div th:if="${inlinePreview}" th:switch="${previewType}">
+                <div th:case="'text'">
+                    <pre><code th:class="${highlightLanguage != null} ? 'code-block hljs ' + highlightLanguage : 'code-block hljs'" th:text="${textContent}"></code></pre>
+                </div>
+                <div th:case="'markdown'">
+                    <article class="markdown-body" th:utext="${markdownHtml}"></article>
+                </div>
+                <div th:case="'image'" style="text-align:center;">
+                    <img th:src="${imageData}" alt="image preview" class="image-preview"/>
+                </div>
+                <div th:case="'pdf'">
+                    <iframe th:src="${pdfData}" class="pdf-frame"></iframe>
+                </div>
+                <div th:case="*">
+                    <div class="preview-placeholder">暂不支持该类型的内嵌预览，请下载查看。</div>
+                </div>
+            </div>
+
+            <div th:if="${clientRenderOffice}">
+                <div id="office-status" class="office-progress">正在加载 Office 文档预览...</div>
+                <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper"></div>
+                <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container"></div>
+                <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper"></div>
+                <div class="office-hint">若预览失败，可尝试直接下载文件。</div>
+            </div>
+        </div>
+        <div th:if="${!previewAvailable}" class="preview-placeholder">
+            <p>暂不支持此文件类型的在线预览。</p>
+            <p>你仍然可以通过上方的按钮下载或查看原始内容。</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxjs@2.12.0/dist/pptxjs.min.js"></script>
+<script th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre code').forEach(function (block) {
+            if (window.hljs) {
+                window.hljs.highlightElement(block);
+            }
+        });
+    });
+
+    const clientRenderOffice = /*[[${clientRenderOffice}]]*/ false;
+    const rawUrl = /*[[${rawUrl}]]*/ '';
+    const previewType = /*[[${previewType}]]*/ 'binary';
+
+    if (clientRenderOffice && rawUrl) {
+        fetch(rawUrl)
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('无法加载文件');
+                }
+                return response.arrayBuffer();
+            })
+            .then(function (buffer) {
+                const statusEl = document.getElementById('office-status');
+                if (previewType === 'word' && window.docx) {
+                    const container = document.getElementById('docx-container');
+                    window.docx.renderAsync(buffer, container).then(function () {
+                        if (statusEl) {
+                            statusEl.remove();
+                        }
+                    }).catch(function (error) {
+                        if (statusEl) {
+                            statusEl.textContent = '预览失败: ' + error.message;
+                        }
+                    });
+                } else if (previewType === 'excel' && window.XLSX) {
+                    const container = document.getElementById('excel-container');
+                    if (!container) {
+                        return;
+                    }
+                    const workbook = window.XLSX.read(buffer, { type: 'array' });
+                    container.innerHTML = '';
+                    workbook.SheetNames.forEach(function (name, index) {
+                        const sheet = workbook.Sheets[name];
+                        const html = window.XLSX.utils.sheet_to_html(sheet, {
+                            header: '<h4>工作表 ' + (index + 1) + ': ' + name + '</h4>',
+                            editable: false
+                        });
+                        const section = document.createElement('section');
+                        section.innerHTML = html;
+                        container.appendChild(section);
+                    });
+                    if (statusEl) {
+                        statusEl.remove();
+                    }
+                } else if (previewType === 'powerpoint' && window.PPTX) {
+                    const container = document.getElementById('ppt-container');
+                    if (container) {
+                        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+                        const url = URL.createObjectURL(blob);
+                        window.PPTX.load(url, '#ppt-container').then(function () {
+                            if (statusEl) {
+                                statusEl.remove();
+                            }
+                            URL.revokeObjectURL(url);
+                        }).catch(function (error) {
+                            if (statusEl) {
+                                statusEl.textContent = '预览失败: ' + error.message;
+                            }
+                            URL.revokeObjectURL(url);
+                        });
+                    }
+                } else if (statusEl) {
+                    statusEl.textContent = '当前环境缺少所需的预览库，请下载查看。';
+                }
+            })
+            .catch(function (error) {
+                const statusEl = document.getElementById('office-status');
+                if (statusEl) {
+                    statusEl.textContent = '预览失败: ' + error.message;
+                }
+            });
+    }
+</script>
+</body>
+</html>

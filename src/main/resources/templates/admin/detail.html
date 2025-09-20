@@ -166,6 +166,13 @@
         .file-icon {
             font-size: 1.2rem;
         }
+        .file-link {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .file-link:hover {
+            text-decoration: underline;
+        }
         .commit-list {
             max-height: 400px;
             overflow-y: auto;
@@ -436,7 +443,13 @@ git push -u origin main'">推送命令</pre>
                         <div class="file-name">
                             <span class="file-icon" th:text="${file.type == 'directory' ? '📁' : '📄'}">📄</span>
                             <a th:if="${file.type == 'directory'}" th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}&path=${file.path}|}" th:text="${file.name}"></a>
-                            <span th:if="${file.type != 'directory'}" th:text="${file.name}"></span>
+                            <a th:if="${file.type != 'directory'}"
+                               th:href="@{|/admin/repo/${repoName}/file?path=${file.path}${currentBranch != null ? '&branch=' + currentBranch : ''}|}"
+                               target="_blank"
+                               rel="noopener"
+                               class="file-link"
+                               th:title="${'预览 ' + file.name}"
+                               th:text="${file.name}"></a>
                         </div>
                         <div th:text="${file.sizeFormatted}">1.2 KB</div>
                         <div th:text="${file.type == 'directory' ? '目录' : '文件'}">文件</div>
