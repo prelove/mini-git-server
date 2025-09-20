@@ -444,11 +444,12 @@ git push -u origin main'">推送命令</pre>
                             <span class="file-icon" th:text="${file.type == 'directory' ? '📁' : '📄'}">📄</span>
                             <a th:if="${file.type == 'directory'}" th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}&path=${file.path}|}" th:text="${file.name}"></a>
                             <a th:if="${file.type != 'directory'}"
-                               th:href="@{|/admin/repo/${repoName}/file?branch=${currentBranch}&path=${file.path}|}"
-                               th:text="${file.name}"
+                               th:href="@{|/admin/repo/${repoName}/file?path=${file.path}${currentBranch != null ? '&branch=' + currentBranch : ''}|}"
                                target="_blank"
+                               rel="noopener"
                                class="file-link"
-                               th:title="${'预览 ' + file.name}"></a>
+                               th:title="${'预览 ' + file.name}"
+                               th:text="${file.name}"></a>
                         </div>
                         <div th:text="${file.sizeFormatted}">1.2 KB</div>
                         <div th:text="${file.type == 'directory' ? '目录' : '文件'}">文件</div>

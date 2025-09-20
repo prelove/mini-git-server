@@ -9,6 +9,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.slf4j.Logger;
@@ -104,6 +105,118 @@ public class GitRepositoryService {
         public void setLastCommitMessage(String lastCommitMessage) { this.lastCommitMessage = lastCommitMessage; }
         public Date getLastCommitDate() { return lastCommitDate; }
         public void setLastCommitDate(Date lastCommitDate) { this.lastCommitDate = lastCommitDate; }
+    }
+
+    /**
+     * 获取文件详细信息
+     */
+    public FileInfo getFileInfo(File repoDir, String branchName, String path) throws Exception {
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException("File path must not be empty");
+        }
+
+        String normalizedPath = normalizePath(path);
+
+        try (Repository repository = new FileRepositoryBuilder()
+                .setGitDir(repoDir)
+                .setMustExist(true)
+                .build()) {
+
+            ObjectId branchId = resolveBranchObjectId(repository, branchName);
+            if (branchId == null) {
+                throw new IllegalArgumentException("Branch not found: " + (branchName == null ? "(default)" : branchName));
+            }
+
+            try (RevWalk revWalk = new RevWalk(repository)) {
+                RevCommit commit = revWalk.parseCommit(branchId);
+                RevTree tree = commit.getTree();
+
+                try (TreeWalk treeWalk = TreeWalk.forPath(repository, normalizedPath, tree)) {
+                    if (treeWalk == null) {
+                        throw new IllegalArgumentException("File not found: " + path);
+                    }
+
+                    FileInfo info = new FileInfo();
+                    info.setName(treeWalk.getNameString());
+                    info.setPath(normalizedPath);
+
+                    if (treeWalk.isSubtree()) {
+                        info.setType("directory");
+                        info.setSize(0);
+                        info.setSizeFormatted("-");
+                    } else {
+                        info.setType("file");
+                        ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
+                        long size = loader.getSize();
+                        info.setSize(size);
+                        info.setSizeFormatted(formatBytes(size));
+                    }
+
+                    return info;
+                }
+            }
+        }
+    }
+
+    /**
+     * 获取文件内容
+     */
+    public byte[] getFileContent(File repoDir, String branchName, String path) throws Exception {
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException("File path must not be empty");
+        }
+
+        String normalizedPath = normalizePath(path);
+
+        try (Repository repository = new FileRepositoryBuilder()
+                .setGitDir(repoDir)
+                .setMustExist(true)
+                .build()) {
+
+            ObjectId branchId = resolveBranchObjectId(repository, branchName);
+            if (branchId == null) {
+                throw new IllegalArgumentException("Branch not found: " + (branchName == null ? "(default)" : branchName));
+            }
+
+            try (RevWalk revWalk = new RevWalk(repository)) {
+                RevCommit commit = revWalk.parseCommit(branchId);
+                RevTree tree = commit.getTree();
+
+                try (TreeWalk treeWalk = TreeWalk.forPath(repository, normalizedPath, tree)) {
+                    if (treeWalk == null || treeWalk.isSubtree()) {
+                        throw new IllegalArgumentException("File not found or is a directory: " + path);
+                    }
+
+                    ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
+                    return loader.getBytes();
+                }
+            }
+        }
+    }
+
+    private String normalizePath(String path) {
+        String trimmed = path.trim();
+        if (trimmed.startsWith("/")) {
+            return trimmed.substring(1);
+        }
+        return trimmed;
+    }
+
+    private ObjectId resolveBranchObjectId(Repository repository, String branchName) throws IOException {
+        String resolved = branchName;
+        if (resolved == null || resolved.isEmpty()) {
+            resolved = getDefaultBranch(repository);
+        }
+
+        if (resolved == null) {
+            return null;
+        }
+
+        if (!resolved.startsWith("refs/")) {
+            resolved = "refs/heads/" + resolved;
+        }
+
+        return repository.resolve(resolved);
     }
 
     /**
