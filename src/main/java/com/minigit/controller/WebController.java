@@ -21,14 +21,22 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
 import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.HashSet;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
@@ -42,19 +50,62 @@ public class WebController {
 
     private static final Logger logger = LoggerFactory.getLogger(WebController.class);
 
-    private static final Set<String> MARKDOWN_EXTENSIONS = new HashSet<>(Arrays.asList(
-        "md", "markdown", "mkd", "mkdn"
-    ));
-    private static final Set<String> TEXT_EXTENSIONS = new HashSet<>(Arrays.asList(
-        "txt", "log", "cfg", "ini", "json", "yml", "yaml", "xml", "html", "htm", "css",
-        "js", "ts", "tsx", "jsx", "java", "kt", "kts", "groovy", "py", "rb", "go",
-        "rs", "c", "cpp", "h", "hpp", "cs", "swift", "php", "sql", "sh", "bat",
-        "gradle", "properties", "pom", "mdx", "csv"
-    ));
-    private static final Set<String> IMAGE_EXTENSIONS = new HashSet<>(Arrays.asList(
-        "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico"
-    ));
-    private static final Set<String> PDF_EXTENSIONS = new HashSet<>(Arrays.asList("pdf"));
+    private static final Parser MARKDOWN_PARSER = Parser.builder().build();
+    private static final HtmlRenderer MARKDOWN_RENDERER = HtmlRenderer.builder().build();
+
+    private static final Set<String> MARKDOWN_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        "md", "markdown", "mdown", "mkd"
+    )));
+
+    private static final Set<String> TEXT_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        "txt", "log", "gitignore", "gitattributes", "java", "js", "ts", "css", "scss", "html", "xml",
+        "json", "yml", "yaml", "properties", "gradle", "py", "rb", "go", "rs", "sh", "bat", "sql",
+        "c", "h", "cpp", "hpp", "cs", "kt", "swift"
+    )));
+
+    private static final Set<String> IMAGE_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "avif"
+    )));
+
+    private static final Set<String> PDF_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Collections.singletonList("pdf")));
+
+    private static final Set<String> WORD_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("doc", "docx")));
+    private static final Set<String> EXCEL_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("xls", "xlsx", "csv")));
+    private static final Set<String> POWERPOINT_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("ppt", "pptx")));
+
+    private static final Map<String, String> HIGHLIGHT_LANGUAGE_MAP;
+
+    private static final int MAX_INLINE_PREVIEW_BYTES = 1_048_576; // 1 MB
+
+    static {
+        Map<String, String> languageMap = new HashMap<>();
+        languageMap.put("java", "java");
+        languageMap.put("js", "javascript");
+        languageMap.put("ts", "typescript");
+        languageMap.put("css", "css");
+        languageMap.put("scss", "scss");
+        languageMap.put("html", "html");
+        languageMap.put("xml", "xml");
+        languageMap.put("json", "json");
+        languageMap.put("yml", "yaml");
+        languageMap.put("yaml", "yaml");
+        languageMap.put("sh", "bash");
+        languageMap.put("bash", "bash");
+        languageMap.put("bat", "dos");
+        languageMap.put("py", "python");
+        languageMap.put("rb", "ruby");
+        languageMap.put("go", "go");
+        languageMap.put("rs", "rust");
+        languageMap.put("c", "c");
+        languageMap.put("h", "c");
+        languageMap.put("cpp", "cpp");
+        languageMap.put("hpp", "cpp");
+        languageMap.put("cs", "csharp");
+        languageMap.put("kt", "kotlin");
+        languageMap.put("swift", "swift");
+        languageMap.put("sql", "sql");
+        HIGHLIGHT_LANGUAGE_MAP = Collections.unmodifiableMap(languageMap);
+    }
 
     private final RepositoryService repositoryService;
     private final GitRepositoryService gitRepositoryService;
@@ -68,8 +119,6 @@ public class WebController {
         this.repositoryService = repositoryService;
         this.gitRepositoryService = gitRepositoryService;
         this.messageSource = messageSource;
-        this.markdownParser = Parser.builder().build();
-        this.markdownRenderer = HtmlRenderer.builder().build();
     }
 
     /**
@@ -102,6 +151,311 @@ public class WebController {
             model.addAttribute("error", getMessage("internal.error"));
             return "error";
         }
+    }
+
+    @GetMapping("/admin/repo/{name}/file")
+    public String previewFile(@PathVariable String name,
+                              @RequestParam("path") String path,
+                              @RequestParam(value = "branch", required = false) String branch,
+                              Model model) {
+        String normalizedName;
+        File repoDir;
+
+        try {
+            normalizedName = repositoryService.normalizeRepositoryName(name);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                model.addAttribute("error", getMessage("repo.not.found", name));
+                return "error";
+            }
+
+            repoDir = repositoryService.getRepositoryPath(normalizedName);
+            GitRepositoryService.FileInfo fileInfo = gitRepositoryService.getFileInfo(repoDir, branch, path);
+            if (!"file".equals(fileInfo.getType())) {
+                model.addAttribute("error", "目录不支持在线预览");
+                return "error";
+            }
+
+            byte[] content = gitRepositoryService.getFileContent(repoDir, branch, path);
+            String previewType = determinePreviewType(fileInfo.getName(), null);
+            String mimeType = guessMimeType(fileInfo.getName(), previewType);
+
+            boolean tooLargeForInline = shouldRenderAsText(previewType) && content.length > MAX_INLINE_PREVIEW_BYTES;
+            boolean binaryDetected = shouldRenderAsText(previewType) && isLikelyBinary(content);
+            boolean inlinePreview = !tooLargeForInline && !binaryDetected && previewType != null && !"binary".equals(previewType);
+
+            model.addAttribute("repoName", normalizedName);
+            model.addAttribute("branch", branch);
+            model.addAttribute("fileName", fileInfo.getName());
+            model.addAttribute("filePath", fileInfo.getPath());
+            model.addAttribute("fileSize", fileInfo.getSize());
+            model.addAttribute("fileSizeFormatted", fileInfo.getSizeFormatted());
+            model.addAttribute("previewType", previewType);
+            model.addAttribute("inlinePreview", inlinePreview);
+            model.addAttribute("mimeType", mimeType);
+            model.addAttribute("highlightLanguage", detectHighlightLanguage(fileInfo.getName()));
+            model.addAttribute("tooLargeForInline", tooLargeForInline);
+            model.addAttribute("binaryDetected", binaryDetected);
+
+            String encodedPath = encodeUrlParam(path);
+            String query = "path=" + encodedPath;
+            if (branch != null && !branch.isEmpty()) {
+                query += "&branch=" + encodeUrlParam(branch);
+            }
+            model.addAttribute("downloadUrl", "/admin/repo/" + normalizedName + "/file/download?" + query);
+            model.addAttribute("rawUrl", "/admin/repo/" + normalizedName + "/file/raw?" + query);
+
+            StringBuilder backUrl = new StringBuilder("/admin/repo/").append(normalizedName);
+            String parent = getParentPath(path);
+            if (branch != null && !branch.isEmpty()) {
+                backUrl.append("?branch=").append(encodeUrlParam(branch));
+                if (!parent.isEmpty()) {
+                    backUrl.append("&path=").append(encodeUrlParam(parent));
+                }
+            } else if (!parent.isEmpty()) {
+                backUrl.append("?path=").append(encodeUrlParam(parent));
+            }
+            model.addAttribute("backUrl", backUrl.toString());
+
+            if (inlinePreview) {
+                if ("markdown".equals(previewType)) {
+                    String markdown = new String(content, StandardCharsets.UTF_8);
+                    Node document = MARKDOWN_PARSER.parse(markdown);
+                    String html = MARKDOWN_RENDERER.render(document);
+                    model.addAttribute("markdownHtml", html);
+                } else if ("text".equals(previewType)) {
+                    model.addAttribute("textContent", new String(content, StandardCharsets.UTF_8));
+                } else if ("image".equals(previewType)) {
+                    model.addAttribute("imageData", "data:" + (mimeType != null ? mimeType : "image/*") + ";base64," + Base64.getEncoder().encodeToString(content));
+                } else if ("pdf".equals(previewType)) {
+                    model.addAttribute("pdfData", "data:" + (mimeType != null ? mimeType : "application/pdf") + ";base64," + Base64.getEncoder().encodeToString(content));
+                }
+            }
+
+            boolean requiresClientRender = Arrays.asList("word", "excel", "powerpoint").contains(previewType);
+            model.addAttribute("clientRenderOffice", requiresClientRender);
+            model.addAttribute("previewAvailable", inlinePreview || requiresClientRender);
+
+            return "admin/file-viewer";
+        } catch (IllegalArgumentException e) {
+            logger.warn("File preview failed for repo {} path {}: {}", name, path, e.getMessage());
+            model.addAttribute("error", e.getMessage());
+            return "error";
+        } catch (Exception e) {
+            logger.error("Unexpected error preparing file preview for repo {} path {}", name, path, e);
+            model.addAttribute("error", "加载文件预览时发生错误: " + e.getMessage());
+            return "error";
+        }
+    }
+
+    @GetMapping("/admin/repo/{name}/file/raw")
+    public ResponseEntity<byte[]> rawFile(@PathVariable String name,
+                                          @RequestParam("path") String path,
+                                          @RequestParam(value = "branch", required = false) String branch) {
+        return serveFileContent(name, path, branch, false);
+    }
+
+    @GetMapping("/admin/repo/{name}/file/download")
+    public ResponseEntity<byte[]> downloadFile(@PathVariable String name,
+                                               @RequestParam("path") String path,
+                                               @RequestParam(value = "branch", required = false) String branch) {
+        return serveFileContent(name, path, branch, true);
+    }
+
+    private ResponseEntity<byte[]> serveFileContent(String repoName, String path, String branch, boolean attachment) {
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(repoName);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            File repoDir = repositoryService.getRepositoryPath(normalizedName);
+            GitRepositoryService.FileInfo fileInfo = gitRepositoryService.getFileInfo(repoDir, branch, path);
+            if (!"file".equals(fileInfo.getType())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+
+            byte[] content = gitRepositoryService.getFileContent(repoDir, branch, path);
+            String previewType = determinePreviewType(fileInfo.getName(), null);
+            String mimeType = guessMimeType(fileInfo.getName(), previewType);
+
+            HttpHeaders headers = new HttpHeaders();
+            if (mimeType != null) {
+                headers.setContentType(MediaType.parseMediaType(mimeType));
+            } else {
+                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            }
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, buildContentDisposition(attachment, fileInfo.getName()));
+            headers.setContentLength(content.length);
+
+            return new ResponseEntity<>(content, headers, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Serve file failed for repo {} path {}: {}", repoName, path, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e) {
+            logger.error("Error serving file {} from repo {}", path, repoName, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private String determinePreviewType(String fileName, String mimeType) {
+        String extension = extractExtension(fileName);
+
+        if (extension != null) {
+            if (MARKDOWN_EXTENSIONS.contains(extension)) {
+                return "markdown";
+            }
+            if (TEXT_EXTENSIONS.contains(extension)) {
+                return "text";
+            }
+            if (IMAGE_EXTENSIONS.contains(extension)) {
+                return "image";
+            }
+            if (PDF_EXTENSIONS.contains(extension)) {
+                return "pdf";
+            }
+            if (WORD_EXTENSIONS.contains(extension)) {
+                return "word";
+            }
+            if (EXCEL_EXTENSIONS.contains(extension)) {
+                return "excel";
+            }
+            if (POWERPOINT_EXTENSIONS.contains(extension)) {
+                return "powerpoint";
+            }
+        }
+
+        if (mimeType != null) {
+            if (mimeType.startsWith("text/")) {
+                return "text";
+            }
+            if (mimeType.startsWith("image/")) {
+                return "image";
+            }
+            if (mimeType.equals("application/pdf")) {
+                return "pdf";
+            }
+        }
+
+        return "binary";
+    }
+
+    private String detectHighlightLanguage(String fileName) {
+        String extension = extractExtension(fileName);
+        if (extension == null) {
+            return null;
+        }
+        return HIGHLIGHT_LANGUAGE_MAP.get(extension);
+    }
+
+    private boolean shouldRenderAsText(String previewType) {
+        return "text".equals(previewType) || "markdown".equals(previewType);
+    }
+
+    private boolean isLikelyBinary(byte[] content) {
+        int controlChars = 0;
+        int length = Math.min(content.length, 4096);
+        for (int i = 0; i < length; i++) {
+            int b = content[i] & 0xFF;
+            if (b == 0) {
+                return true;
+            }
+            if (b < 0x09 || (b > 0x0D && b < 0x20)) {
+                controlChars++;
+            }
+        }
+        return controlChars > length / 8;
+    }
+
+    private String guessMimeType(String fileName, String previewType) {
+        String extension = extractExtension(fileName);
+        if ("markdown".equals(previewType)) {
+            return "text/markdown;charset=UTF-8";
+        }
+        if ("text".equals(previewType)) {
+            return "text/plain;charset=UTF-8";
+        }
+        if ("image".equals(previewType)) {
+            if ("svg".equals(extension)) {
+                return "image/svg+xml";
+            }
+            if (extension != null) {
+                return "image/" + extension.replace("jpg", "jpeg");
+            }
+        }
+        if ("pdf".equals(previewType)) {
+            return "application/pdf";
+        }
+        if ("word".equals(previewType)) {
+            if ("docx".equals(extension)) {
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            }
+            return "application/msword";
+        }
+        if ("excel".equals(previewType)) {
+            if ("xlsx".equals(extension)) {
+                return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            }
+            if ("csv".equals(extension)) {
+                return "text/csv;charset=UTF-8";
+            }
+            return "application/vnd.ms-excel";
+        }
+        if ("powerpoint".equals(previewType)) {
+            if ("pptx".equals(extension)) {
+                return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            }
+            return "application/vnd.ms-powerpoint";
+        }
+
+        String detected = URLConnection.getFileNameMap().getContentTypeFor(fileName);
+        if (detected != null) {
+            return detected;
+        }
+        return null;
+    }
+
+    private String buildContentDisposition(boolean attachment, String fileName) {
+        String type = attachment ? "attachment" : "inline";
+        String escaped = fileName.replace("\"", "\\\"");
+        return type + "; filename=\"" + escaped + "\"; filename*=UTF-8''" + encodeFileName(fileName);
+    }
+
+    private String encodeFileName(String fileName) {
+        try {
+            return URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
+        } catch (Exception e) {
+            return fileName;
+        }
+    }
+
+    private String encodeUrlParam(String value) {
+        if (value == null) {
+            return "";
+        }
+        return encodeFileName(value);
+    }
+
+    private String extractExtension(String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0 || dot == fileName.length() - 1) {
+            return null;
+        }
+        return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private String getParentPath(String path) {
+        if (path == null || path.trim().isEmpty()) {
+            return "";
+        }
+        String trimmed = path.trim();
+        int idx = trimmed.lastIndexOf('/');
+        if (idx <= 0) {
+            return "";
+        }
+        return trimmed.substring(0, idx);
     }
 
     /**
