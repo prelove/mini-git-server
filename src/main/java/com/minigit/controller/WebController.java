@@ -46,7 +46,11 @@ public class WebController {
     private static final Set<String> TEXT_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
         "txt", "log", "gitignore", "gitattributes", "java", "js", "ts", "css", "scss", "html", "xml",
         "json", "yml", "yaml", "properties", "gradle", "py", "rb", "go", "rs", "sh", "bat", "sql",
-        "c", "h", "cpp", "hpp", "cs", "kt", "swift"
+        "c", "h", "cpp", "hpp", "cs", "kt", "swift", "php", "pl", "r", "scala", "clj", "hs", "lua",
+        "vim", "conf", "cfg", "ini", "env", "dockerfile", "makefile", "cmake", "toml", "lock",
+        "proto", "thrift", "graphql", "dart", "elm", "erlang", "ex", "exs", "fs", "fsx", "ml", "mli",
+        "nim", "pas", "pp", "tcl", "vb", "vbs", "asm", "s", "m", "mm", "plist", "strings",
+        "csv", "tsv", "psv", "dsv"  // 将CSV等数据文件作为文本处理
     )));
 
     private static final Set<String> IMAGE_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -56,7 +60,7 @@ public class WebController {
     private static final Set<String> PDF_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Collections.singletonList("pdf")));
 
     private static final Set<String> WORD_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("doc", "docx")));
-    private static final Set<String> EXCEL_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("xls", "xlsx", "csv")));
+    private static final Set<String> EXCEL_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("xls", "xlsx")));  // 移除CSV
     private static final Set<String> POWERPOINT_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("ppt", "pptx")));
 
     private static final Map<String, String> HIGHLIGHT_LANGUAGE_MAP;
@@ -158,7 +162,8 @@ public class WebController {
 
             byte[] content = gitRepositoryService.getFileContent(repoDir, branch, path);
             String detectedMime = detectMimeType(fileInfo.getName());
-            String previewType = determinePreviewType(fileInfo.getName(), detectedMime);
+            // 使用智能内容检测替代原来的简单检测
+            String previewType = determinePreviewTypeWithContentDetection(fileInfo.getName(), detectedMime, content);
             String mimeType = guessMimeType(fileInfo.getName(), previewType, detectedMime);
 
             boolean tooLargeForInline = shouldRenderAsText(previewType) && content.length > MAX_INLINE_PREVIEW_BYTES;
@@ -292,6 +297,62 @@ public class WebController {
             if ("application/pdf".equals(mimeType)) return "pdf";
         }
         return "binary";
+    }
+
+    /**
+     * 智能检测文件内容类型，支持将类文本内容作为文本处理
+     */
+    private String determinePreviewTypeWithContentDetection(String fileName, String mimeType, byte[] content) {
+        // 首先使用扩展名和MIME类型检测
+        String previewType = determinePreviewType(fileName, mimeType);
+
+        // 如果检测为binary，尝试智能检测是否为文本内容
+        if ("binary".equals(previewType) && content != null && content.length > 0) {
+            if (isLikelyTextContent(content)) {
+                // 检测到类文本内容，降级为文本预览
+                return "text";
+            }
+        }
+
+        return previewType;
+    }
+
+    /**
+     * 智能检测内容是否为文本类型
+     */
+    private boolean isLikelyTextContent(byte[] content) {
+        if (content == null || content.length == 0) return false;
+
+        // 检查前几KB内容
+        int checkLength = Math.min(content.length, 8192);
+        int controlChars = 0;
+        int printableChars = 0;
+        int nullBytes = 0;
+
+        for (int i = 0; i < checkLength; i++) {
+            int b = content[i] & 0xFF;
+
+            // 检查空字节（强烈表示二进制）
+            if (b == 0) {
+                nullBytes++;
+                if (nullBytes > 3) return false; // 多个空字节，很可能是二进制
+            }
+
+            // 可打印ASCII字符或常见UTF-8字符
+            if ((b >= 0x20 && b <= 0x7E) || // 可打印ASCII
+                b == 0x09 || b == 0x0A || b == 0x0D || // 制表符、换行符、回车符
+                (b >= 0x80 && b <= 0xFF)) { // 可能的UTF-8字符
+                printableChars++;
+            } else if (b < 0x20 && b != 0x09 && b != 0x0A && b != 0x0D) {
+                controlChars++;
+            }
+        }
+
+        // 如果大部分字符是可打印的，且控制字符很少，认为是文本
+        double printableRatio = (double) printableChars / checkLength;
+        double controlRatio = (double) controlChars / checkLength;
+
+        return printableRatio > 0.7 && controlRatio < 0.1 && nullBytes <= 2;
     }
 
     private String detectHighlightLanguage(String fileName) {

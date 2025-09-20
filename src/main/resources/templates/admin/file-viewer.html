@@ -193,7 +193,7 @@
         <span th:text="${repoName}">repository.git</span>
     </div>
     <div>
-        <a th:if="${backUrl != null}" th:href="${backUrl}">← 返回仓库</a>
+        <a th:if="${backUrl != null}" th:href="${backUrl}" class="back-link">← 返回仓库</a>
     </div>
 </header>
 
@@ -240,10 +240,29 @@
 
             <div th:if="${clientRenderOffice}">
                 <div id="office-status" class="office-progress">正在加载 Office 文档预览...</div>
-                <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper"></div>
-                <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container"></div>
-                <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper"></div>
-                <div class="office-hint">若预览失败，可尝试直接下载文件。</div>
+                <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper" style="display:none;"></div>
+                <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container" style="display:none;"></div>
+                <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper" style="display:none;"></div>
+
+                <!-- 降级预览选项 -->
+                <div id="office-fallback" style="display:none;" class="preview-placeholder">
+                    <h3>📄 Office 文档信息</h3>
+                    <p th:text="'文件名: ' + ${fileName}">文件名</p>
+                    <p th:text="'文件大小: ' + ${fileSizeFormatted}">文件大小</p>
+                    <p th:text="'文件类型: ' + ${previewType}">文件类型</p>
+                    <div class="alert" style="margin-top: 1.5rem;">
+                        <p><strong>💡 预览提示：</strong></p>
+                        <p>• Office 文档需要专用软件打开以获得最佳体验</p>
+                        <p>• 建议下载后使用 Microsoft Office 或 WPS Office 打开</p>
+                        <p>• 对于 Excel 文件，也可以使用 Google Sheets 等在线工具</p>
+                    </div>
+                    <div style="margin-top: 1.5rem;">
+                        <a th:href="${downloadUrl}" class="btn" style="display: inline-block;">📥 立即下载</a>
+                        <a th:href="${rawUrl}" class="btn secondary" style="display: inline-block; margin-left: 0.5rem;" target="_blank">🔍 查看原始文件</a>
+                    </div>
+                </div>
+
+                <div class="office-hint">若预览失败，系统将自动切换到下载模式。</div>
             </div>
         </div>
         <div th:if="${!previewAvailable}" class="preview-placeholder">
@@ -271,74 +290,149 @@
     const rawUrl = /*[[${rawUrl}]]*/ '';
     const previewType = /*[[${previewType}]]*/ 'binary';
 
+    function showFallback() {
+        const statusEl = document.getElementById('office-status');
+        const fallbackEl = document.getElementById('office-fallback');
+        if (statusEl) statusEl.style.display = 'none';
+        if (fallbackEl) fallbackEl.style.display = 'block';
+    }
+
+    function hideStatusShowContainer(containerId) {
+        const statusEl = document.getElementById('office-status');
+        const containerEl = document.getElementById(containerId);
+        if (statusEl) statusEl.style.display = 'none';
+        if (containerEl) containerEl.style.display = 'block';
+    }
+
     if (clientRenderOffice && rawUrl) {
+        // 检查所需的库是否已加载
+        let libraryCheckPassed = false;
+        if (previewType === 'word' && window.docx && typeof window.docx.renderAsync === 'function') {
+            libraryCheckPassed = true;
+        } else if (previewType === 'excel' && window.XLSX && typeof window.XLSX.read === 'function') {
+            libraryCheckPassed = true;
+        } else if (previewType === 'powerpoint' && window.PPTX && typeof window.PPTX.load === 'function') {
+            libraryCheckPassed = true;
+        }
+
+        if (!libraryCheckPassed) {
+            console.warn('Office 预览库未正确加载，切换到降级模式');
+            showFallback();
+            return;
+        }
+
         fetch(rawUrl)
             .then(function (response) {
                 if (!response.ok) {
-                    throw new Error('无法加载文件');
+                    throw new Error('HTTP ' + response.status + ': 无法加载文件');
                 }
                 return response.arrayBuffer();
             })
             .then(function (buffer) {
-                const statusEl = document.getElementById('office-status');
-                if (previewType === 'word' && window.docx) {
-                    const container = document.getElementById('docx-container');
-                    window.docx.renderAsync(buffer, container).then(function () {
-                        if (statusEl) {
-                            statusEl.remove();
+                if (!buffer || buffer.byteLength === 0) {
+                    throw new Error('文件内容为空');
+                }
+
+                try {
+                    if (previewType === 'word') {
+                        const container = document.getElementById('docx-container');
+                        if (!container) {
+                            throw new Error('预览容器不存在');
                         }
-                    }).catch(function (error) {
-                        if (statusEl) {
-                            statusEl.textContent = '预览失败: ' + error.message;
-                        }
-                    });
-                } else if (previewType === 'excel' && window.XLSX) {
-                    const container = document.getElementById('excel-container');
-                    if (!container) {
-                        return;
-                    }
-                    const workbook = window.XLSX.read(buffer, { type: 'array' });
-                    container.innerHTML = '';
-                    workbook.SheetNames.forEach(function (name, index) {
-                        const sheet = workbook.Sheets[name];
-                        const html = window.XLSX.utils.sheet_to_html(sheet, {
-                            header: '<h4>工作表 ' + (index + 1) + ': ' + name + '</h4>',
-                            editable: false
+
+                        window.docx.renderAsync(buffer, container, null, {
+                            debug: false,
+                            experimental: true
+                        }).then(function () {
+                            hideStatusShowContainer('docx-container');
+                        }).catch(function (error) {
+                            console.error('Word 预览失败:', error);
+                            showFallback();
                         });
-                        const section = document.createElement('section');
-                        section.innerHTML = html;
-                        container.appendChild(section);
-                    });
-                    if (statusEl) {
-                        statusEl.remove();
-                    }
-                } else if (previewType === 'powerpoint' && window.PPTX) {
-                    const container = document.getElementById('ppt-container');
-                    if (container) {
-                        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-                        const url = URL.createObjectURL(blob);
-                        window.PPTX.load(url, '#ppt-container').then(function () {
-                            if (statusEl) {
-                                statusEl.remove();
+
+                    } else if (previewType === 'excel') {
+                        const container = document.getElementById('excel-container');
+                        if (!container) {
+                            throw new Error('预览容器不存在');
+                        }
+
+                        try {
+                            const workbook = window.XLSX.read(buffer, {
+                                type: 'array',
+                                cellFormula: false,
+                                cellHTML: false
+                            });
+
+                            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                                throw new Error('Excel 文件没有工作表');
                             }
+
+                            container.innerHTML = '';
+                            let hasValidSheet = false;
+
+                            workbook.SheetNames.forEach(function (name, index) {
+                                try {
+                                    const sheet = workbook.Sheets[name];
+                                    if (sheet) {
+                                        const html = window.XLSX.utils.sheet_to_html(sheet, {
+                                            header: '<h4>工作表 ' + (index + 1) + ': ' + name + '</h4>',
+                                            editable: false
+                                        });
+
+                                        if (html && html.trim().length > 0) {
+                                            const section = document.createElement('section');
+                                            section.innerHTML = html;
+                                            container.appendChild(section);
+                                            hasValidSheet = true;
+                                        }
+                                    }
+                                } catch (sheetError) {
+                                    console.warn('处理工作表失败:', name, sheetError);
+                                }
+                            });
+
+                            if (hasValidSheet) {
+                                hideStatusShowContainer('excel-container');
+                            } else {
+                                throw new Error('无法读取 Excel 工作表内容');
+                            }
+                        } catch (excelError) {
+                            console.error('Excel 解析失败:', excelError);
+                            throw excelError;
+                        }
+
+                    } else if (previewType === 'powerpoint') {
+                        const container = document.getElementById('ppt-container');
+                        if (!container) {
+                            throw new Error('预览容器不存在');
+                        }
+
+                        const blob = new Blob([buffer], {
+                            type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                        });
+                        const url = URL.createObjectURL(blob);
+
+                        window.PPTX.load(url, '#ppt-container').then(function () {
+                            hideStatusShowContainer('ppt-container');
                             URL.revokeObjectURL(url);
                         }).catch(function (error) {
-                            if (statusEl) {
-                                statusEl.textContent = '预览失败: ' + error.message;
-                            }
+                            console.error('PowerPoint 预览失败:', error);
                             URL.revokeObjectURL(url);
+                            showFallback();
                         });
                     }
-                } else if (statusEl) {
-                    statusEl.textContent = '当前环境缺少所需的预览库，请下载查看。';
+                } catch (renderError) {
+                    console.error('文档渲染失败:', renderError);
+                    showFallback();
                 }
             })
             .catch(function (error) {
-                const statusEl = document.getElementById('office-status');
-                if (statusEl) {
-                    statusEl.textContent = '预览失败: ' + error.message;
-                }
+                console.error('Office 文档加载失败:', error);
+                showFallback();
             });
+    } else if (clientRenderOffice) {
+        // 如果需要Office预览但没有rawUrl，直接显示降级界面
+        showFallback();
     }
 </script>
 </body>
