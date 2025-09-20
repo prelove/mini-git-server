@@ -328,17 +328,44 @@ public class GitRepositoryService {
         return files;
     }
 
-    public boolean isEmptyRepository(File repoDir) {
-        try (Repository repository = new FileRepositoryBuilder()
-                .setGitDir(repoDir)
-                .setMustExist(true)
-                .build()) {
-            Ref head = repository.exactRef("HEAD");
-            return (head == null || head.getObjectId() == null);
-        } catch (Exception e) {
+// 在 GitRepositoryService 中修改 isEmptyRepository 方法
+public boolean isEmptyRepository(File repoDir) throws Exception {
+    try (Repository repository = Git.open(repoDir).getRepository()) {
+        // 检查是否有任何引用
+        Collection<Ref> refs = repository.getRefDatabase().getRefs();
+
+        // 过滤掉非分支引用，只看 heads
+        boolean hasBranches = refs.stream()
+            .anyMatch(ref -> ref.getName().startsWith("refs/heads/"));
+
+        if (!hasBranches) {
             return true;
         }
+        
+        // 进一步检查是否有实际的提交
+        try {
+            ObjectId headId = repository.resolve("HEAD");
+            if (headId != null) {
+                return false; // 有 HEAD 指向的提交
+            }
+
+            // 如果 HEAD 为空，检查所有分支
+            for (Ref ref : refs) {
+                if (ref.getName().startsWith("refs/heads/")) {
+                    ObjectId objectId = ref.getObjectId();
+                    if (objectId != null) {
+                        return false; // 找到有效的分支提交
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 如果无法解析提交，可能确实是空仓库
+            logger.debug("Cannot resolve commits in repository: " + e.getMessage());
+        }
+
+        return true;
     }
+}
 
     public void createBranch(File repoDir, String sourceBranch, String newBranch) throws Exception {
         try (Repository repository = new FileRepositoryBuilder()

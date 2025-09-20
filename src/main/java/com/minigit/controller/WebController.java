@@ -5,6 +5,7 @@ import com.minigit.service.RepositoryService;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
+import org.eclipse.jgit.api.Git;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
@@ -464,6 +465,10 @@ public class WebController {
 
             boolean isEmpty;
             try {
+                // 强制刷新仓库状态
+                try (Git git = Git.open(repoDir)) {
+                    git.getRepository().getRefDatabase().refresh();
+                }
                 isEmpty = gitRepositoryService.isEmptyRepository(repoDir);
             } catch (Exception e) {
                 isEmpty = true;
