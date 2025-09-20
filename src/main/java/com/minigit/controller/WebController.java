@@ -2,22 +2,42 @@ package com.minigit.controller;
 
 import com.minigit.service.GitRepositoryService;
 import com.minigit.service.RepositoryService;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.TreeWalk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLConnection;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Web管理界面控制器
@@ -27,6 +47,16 @@ import java.util.Map;
 public class WebController {
 
     private static final Logger logger = LoggerFactory.getLogger(WebController.class);
+    private static final Set<String> PREVIEWABLE_MIME_TYPES = new HashSet<>(Arrays.asList(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ));
+    private static final Pattern BRANCH_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._\\-\/]+$");
 
     private final RepositoryService repositoryService;
     private final GitRepositoryService gitRepositoryService;
@@ -329,6 +359,164 @@ public class WebController {
             
             return "error";
         }
+    }
+
+    /**
+     * 获取文件元数据
+     */
+    @GetMapping("/admin/repo/{name}/meta")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> fileMeta(@PathVariable String name,
+                                                        @RequestParam("branch") String branch,
+                                                        @RequestParam("path") String path) {
+        if (branch == null || branch.isBlank() || path == null || path.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            File repoDir = repositoryService.getRepositoryPath(normalizedName);
+            try (Repository repository = openRepository(repoDir)) {
+                ObjectLoader loader = resolveFileLoader(repository, branch, path);
+                if (loader == null) {
+                    return ResponseEntity.notFound().build();
+                }
+
+                String fileName = Paths.get(path).getFileName().toString();
+                String contentType = detectContentType(loader, fileName);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("contentType", contentType);
+                result.put("previewable", isPreviewable(contentType));
+                return ResponseEntity.ok(result);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to load metadata for file {} in repo {}", path, name, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 预览或下载文件
+     */
+    @GetMapping("/admin/repo/{name}/preview")
+    public ResponseEntity<byte[]> previewFile(@PathVariable String name,
+                                              @RequestParam("branch") String branch,
+                                              @RequestParam("path") String path) {
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            File repoDir = repositoryService.getRepositoryPath(normalizedName);
+            try (Repository repository = openRepository(repoDir)) {
+                ObjectLoader loader = resolveFileLoader(repository, branch, path);
+                if (loader == null) {
+                    return ResponseEntity.notFound().build();
+                }
+
+                byte[] bytes = loader.getBytes();
+                String fileName = Paths.get(path).getFileName().toString();
+                String contentType = detectContentType(loader, fileName);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.parseMediaType(contentType));
+                if (!isPreviewable(contentType)) {
+                    headers.setContentDisposition(ContentDisposition.attachment().filename(fileName).build());
+                }
+
+                return ResponseEntity.ok().headers(headers).body(bytes);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to preview file {} in repo {}", path, name, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private boolean isPreviewable(String contentType) {
+        if (contentType == null) {
+            return false;
+        }
+        if (contentType.startsWith("text/")) {
+            return true;
+        }
+        return PREVIEWABLE_MIME_TYPES.contains(contentType);
+    }
+
+    private Repository openRepository(File repoDir) throws IOException {
+        return new FileRepositoryBuilder()
+            .setGitDir(repoDir)
+            .setMustExist(true)
+            .build();
+    }
+
+    private ObjectLoader resolveFileLoader(Repository repository, String branch, String path) throws IOException {
+        if (branch == null || branch.isBlank() || path == null || path.isBlank()) {
+            return null;
+        }
+
+        String targetRef = normalizeBranchRef(branch);
+        if (targetRef == null) {
+            return null;
+        }
+        if (path.contains("..") || path.contains("\\") || path.contains("//") || path.startsWith("/")) {
+            return null;
+        }
+        ObjectId branchId = repository.resolve(targetRef);
+        if (branchId == null) {
+            return null;
+        }
+
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit commit = walk.parseCommit(branchId);
+            RevTree tree = commit.getTree();
+            try (TreeWalk treeWalk = TreeWalk.forPath(repository, path, tree)) {
+                if (treeWalk == null || treeWalk.isSubtree()) {
+                    return null;
+                }
+                ObjectId objectId = treeWalk.getObjectId(0);
+                return repository.open(objectId);
+            }
+        }
+    }
+
+    private String detectContentType(ObjectLoader loader, String fileName) {
+        String contentType = URLConnection.guessContentTypeFromName(fileName);
+        if (contentType != null) {
+            return contentType;
+        }
+
+        try (InputStream stream = loader.openStream()) {
+            contentType = URLConnection.guessContentTypeFromStream(stream);
+        } catch (IOException e) {
+            logger.debug("Unable to detect content type from stream for file {}", fileName, e);
+        }
+
+        if (contentType == null) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+        return contentType;
+    }
+
+    private String normalizeBranchRef(String branch) {
+        if (branch == null || branch.isBlank()) {
+            return null;
+        }
+        if (branch.contains("..") || branch.contains("\\") || branch.contains("//")) {
+            return null;
+        }
+        if (branch.startsWith("refs/")) {
+            return branch;
+        }
+        if (!BRANCH_NAME_PATTERN.matcher(branch).matches()) {
+            return null;
+        }
+        return "refs/heads/" + branch;
     }
 
     /**

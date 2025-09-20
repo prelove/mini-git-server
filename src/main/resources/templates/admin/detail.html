@@ -267,7 +267,7 @@
             text-decoration: underline;
         }
     </style>
-    <script>
+    <script th:inline="javascript">
         function switchTab(tabName) {
             // 隐藏所有标签内容
             document.querySelectorAll('.tab-content').forEach(content => {
@@ -289,12 +289,54 @@
             window.location.href = currentUrl.toString();
         }
         
+        const repoName = /*[[${repoName}]]*/ "";
+        const currentBranch = /*[[${currentBranch}]]*/ "";
+
+        function attachFileHandlers() {
+            document.querySelectorAll('.file-item[data-type]').forEach(item => {
+                item.addEventListener('dblclick', async function() {
+                    const type = this.dataset.type;
+                    if (type === 'directory') {
+                        const link = this.querySelector('a');
+                        if (link) {
+                            window.location.href = link.href;
+                        }
+                        return;
+                    }
+                    if (!currentBranch) {
+                        return;
+                    }
+                    const filePath = this.dataset.path;
+                    const encodedRepo = encodeURIComponent(repoName);
+                    const encodedBranch = encodeURIComponent(currentBranch);
+                    const encodedPath = encodeURIComponent(filePath);
+                    const metaUrl = `/admin/repo/${encodedRepo}/meta?branch=${encodedBranch}&path=${encodedPath}`;
+                    const previewUrl = `/admin/repo/${encodedRepo}/preview?branch=${encodedBranch}&path=${encodedPath}`;
+                    try {
+                        const resp = await fetch(metaUrl);
+                        if (!resp.ok) {
+                            throw new Error(`Metadata request failed with status ${resp.status}`);
+                        }
+                        const data = await resp.json();
+                        if (data.previewable) {
+                            window.open(previewUrl, '_blank', 'noopener');
+                        } else {
+                            window.location.href = previewUrl;
+                        }
+                    } catch (e) {
+                        window.location.href = previewUrl;
+                    }
+                });
+            });
+        }
+
         // 页面加载完成后默认显示第一个标签
         window.onload = function() {
             const firstTab = document.querySelector('.tab');
             if (firstTab) {
                 firstTab.click();
             }
+            attachFileHandlers();
         }
     </script>
 </head>
@@ -432,7 +474,7 @@ git push -u origin main'">推送命令</pre>
                         <div>-</div>
                         <div>目录</div>
                     </div>
-                    <div th:each="file : ${files}" class="file-item">
+                    <div th:each="file : ${files}" class="file-item" th:attr="data-path=${file.path}, data-type=${file.type}">
                         <div class="file-name">
                             <span class="file-icon" th:text="${file.type == 'directory' ? '📁' : '📄'}">📄</span>
                             <a th:if="${file.type == 'directory'}" th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}&path=${file.path}|}" th:text="${file.name}"></a>
