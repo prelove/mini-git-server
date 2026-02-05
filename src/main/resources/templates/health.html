@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系统健康检查 - Mini Git Server</title>
+    <title>System Health Check - Mini Git Server</title>
     <style>
         * {
             margin: 0;
@@ -220,7 +220,7 @@
         }
     </style>
     <script>
-        // 自动刷新功能
+        // Auto-refresh
         let refreshInterval;
         let countdown = 30;
         
@@ -245,7 +245,7 @@
         window.onload = function() {
             startAutoRefresh();
             
-            // 点击页面暂停自动刷新
+            // Click the page to pause auto-refresh.
             document.addEventListener('click', function() {
                 if (refreshInterval) {
                     stopAutoRefresh();
@@ -262,21 +262,21 @@
                 <h1>🔧 Mini Git Server</h1>
             </div>
             <div>
-                <a href="/admin" style="color: white; text-decoration: none;">← 返回管理后台</a>
+                <a href="/admin" style="color: white; text-decoration: none;">← Back to Admin</a>
             </div>
         </div>
     </header>
     
     <nav class="nav">
         <div class="nav-content">
-            <a href="/admin">仓库管理</a>
-            <a href="/admin/system">系统信息</a>
-            <a href="/actuator/health" class="active">系统健康</a>
+            <a href="/admin">Repositories</a>
+            <a href="/admin/system">System Info</a>
+            <a href="/actuator/health" class="active">System Health</a>
         </div>
     </nav>
     
     <div class="auto-refresh" id="auto-refresh">
-        🔄 自动刷新: <span id="countdown">30</span>s (点击页面停止)
+        🔄 Auto refresh: <span id="countdown">30</span>s (click to pause)
     </div>
     
     <div class="container">
@@ -284,52 +284,52 @@
             <div th:class="${overallStatus == 'UP' ? 'overall-status status-up' : 'overall-status status-down'}">
                 <span class="status-icon" th:text="${overallStatus == 'UP' ? '✅' : '❌'}">✅</span>
                 <div>
-                    <div>系统状态: <span th:text="${overallStatus}">UP</span></div>
-                    <div class="check-time">检查时间: <span th:text="${checkTime}">2025-08-29 10:43:27</span></div>
+                    <div>System status: <span th:text="${overallStatus}">UP</span></div>
+                    <div class="check-time">Checked at: <span th:text="${checkTime}">2025-08-29 10:43:27</span></div>
                 </div>
             </div>
         </div>
         
         <div class="health-grid">
-            <!-- VCS 服务状态 -->
+            <!-- VCS service status -->
             <div th:class="${vcsStatus == 'UP' ? 'health-card up' : 'health-card down'}">
                 <div class="card-header">
-                    <div class="card-title">📚 Git 服务</div>
+                    <div class="card-title">📚 Git Service</div>
                     <div th:class="${vcsStatus == 'UP' ? 'card-status up' : 'card-status down'}" th:text="${vcsStatus}">UP</div>
                 </div>
                 <div class="card-content">
                     <div class="info-item">
-                        <span class="info-label">存储目录:</span>
+                        <span class="info-label">Storage directory:</span>
                         <span class="info-value" th:text="${storageDir}">./data/repos</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">仓库数量:</span>
+                        <span class="info-label">Repository count:</span>
                         <span class="info-value" th:text="${repositories}">0</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">服务版本:</span>
+                        <span class="info-label">Service version:</span>
                         <span class="info-value" th:text="${version}">1.0.0</span>
                     </div>
                 </div>
             </div>
             
-            <!-- 磁盘空间状态 -->
+            <!-- Disk space status -->
             <div th:class="${diskStatus == 'UP' ? 'health-card up' : 'health-card down'}">
                 <div class="card-header">
-                    <div class="card-title">💾 磁盘空间</div>
+                    <div class="card-title">💾 Disk Space</div>
                     <div th:class="${diskStatus == 'UP' ? 'card-status up' : 'card-status down'}" th:text="${diskStatus}">UP</div>
                 </div>
                 <div class="card-content">
                     <div class="info-item">
-                        <span class="info-label">总空间:</span>
+                        <span class="info-label">Total space:</span>
                         <span class="info-value" th:text="${totalSpace}">100 GB</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">已用空间:</span>
+                        <span class="info-label">Used space:</span>
                         <span class="info-value" th:text="${usedSpace}">50 GB</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">可用空间:</span>
+                        <span class="info-label">Free space:</span>
                         <span class="info-value" th:text="${freeSpace}">50 GB</span>
                     </div>
                     <div class="progress-bar">
@@ -341,19 +341,19 @@
                 </div>
             </div>
             
-            <!-- 网络连接状态 -->
+            <!-- Network status -->
             <div th:class="${pingStatus == 'UP' ? 'health-card up' : 'health-card down'}">
                 <div class="card-header">
-                    <div class="card-title">🌐 网络连接</div>
+                    <div class="card-title">🌐 Network</div>
                     <div th:class="${pingStatus == 'UP' ? 'card-status up' : 'card-status down'}" th:text="${pingStatus}">UP</div>
                 </div>
                 <div class="card-content">
                     <div class="info-item">
-                        <span class="info-label">服务状态:</span>
-                        <span class="info-value" th:text="${pingStatus == 'UP' ? '正常' : '异常'}">正常</span>
+                        <span class="info-label">Service status:</span>
+                        <span class="info-value" th:text="${pingStatus == 'UP' ? 'Healthy' : 'Unhealthy'}">Healthy</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">响应时间:</span>
+                        <span class="info-label">Response time:</span>
                         <span class="info-value">< 1ms</span>
                     </div>
                 </div>
@@ -361,9 +361,9 @@
         </div>
         
         <div class="actions">
-            <a href="/actuator/health" class="btn">🔄 立即刷新</a>
-            <a href="/actuator/health/json" class="btn btn-secondary" target="_blank">📋 查看JSON</a>
-            <a href="/admin" class="btn btn-secondary">🏠 返回首页</a>
+            <a href="/actuator/health" class="btn">🔄 Refresh</a>
+            <a href="/actuator/health/json" class="btn btn-secondary" target="_blank">📋 View JSON</a>
+            <a href="/admin" class="btn btn-secondary">🏠 Back to Home</a>
         </div>
     </div>
 </body>

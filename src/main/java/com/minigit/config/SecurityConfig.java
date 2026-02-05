@@ -21,21 +21,21 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                // 1) Git 端点不要被 CSRF 拦, 否则 push 会 403
+                // 1) Git endpoints must bypass CSRF, otherwise push will 403.
                 .csrf().ignoringAntMatchers("/git/**", "/login").and()
 
-                // 2) 授权规则：/git/** 需要认证；静态资源与 /login 放行
+                // 2) Authorization: /git/** requires auth; static resources and /login are public.
                 .authorizeRequests()
                 .antMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/", "/login").permitAll()
                 .antMatchers("/git/**").authenticated()
                 .anyRequest().authenticated()
                 .and()
 
-                // 3) 为 /git/** 提供 HTTP Basic（401 + WWW-Authenticate）
+                // 3) Provide HTTP Basic for /git/** (401 + WWW-Authenticate).
                 .httpBasic()
                 .and()
 
-                // 4) 仍然保留网站的表单登录（用于非 /git/** 的管理页面）
+                // 4) Keep form login for the admin pages (non /git/**).
                 .formLogin()
                 .loginPage("/login")
                 .loginProcessingUrl("/login")
@@ -51,7 +51,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .permitAll()
                 .and()
 
-                // 5) 关键：把 /git/** 的未认证入口改成 Basic，而不是重定向到 /login
+                // 5) Key: unauthenticated /git/** should be Basic, not redirect to /login.
                 .exceptionHandling()
                 .defaultAuthenticationEntryPointFor(
                         gitBasicEntryPoint(), new AntPathRequestMatcher("/git/**"));
@@ -66,13 +66,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // 支持 {bcrypt}、{noop} 等多种编码前缀的“委派编码器”
+        // Delegating encoder supports prefixes like {bcrypt}, {noop}, etc.
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder encoder) {
-        // 测试账号：git / 123456
+        // Test account: git / 123456
         return new InMemoryUserDetailsManager(
                 User.withUsername("admin")
                         .password(encoder.encode("admin123"))

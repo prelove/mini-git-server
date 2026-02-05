@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>错误 - Mini Git Server</title>
+    <title>Error - Mini Git Server</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -54,9 +54,9 @@
 <body>
     <div class="error-container">
         <div class="error-icon">❌</div>
-        <h1 class="error-title">出错了</h1>
-        <p class="error-message" th:text="${error ?: '发生了未知错误，请稍后重试。'}">发生了未知错误，请稍后重试。</p>
-        <a href="/admin" class="btn">返回首页</a>
+        <h1 class="error-title">Something went wrong</h1>
+        <p class="error-message" th:text="${error ?: 'An unknown error occurred. Please try again later.'}">An unknown error occurred. Please try again later.</p>
+        <a href="/admin" class="btn">Back to home</a>
     </div>
 </body>
 </html>

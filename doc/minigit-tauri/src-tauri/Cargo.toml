@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# 使用在 crates.io 上可用的 tauri 2.x 版本（2.4.1 在索引中可用）
+# Use a tauri 2.x version available on crates.io (2.4.1 is indexed).
 tauri = { version = "2.4.1", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]
-# tauri-build 版本与 tauri 对应，使用可用的 2.4.1
+# Keep tauri-build aligned with tauri; 2.4.1 is available.
 tauri-build = { version = "2.4.1", features = [] }

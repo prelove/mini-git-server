@@ -28,7 +28,7 @@ import java.security.Principal;
 import java.util.*;
 
 /**
- * Web管理界面控制器
+ * Web admin UI controller.
  */
 @Controller
 @RequestMapping("/")
@@ -50,7 +50,7 @@ public class WebController {
         "vim", "conf", "cfg", "ini", "env", "dockerfile", "makefile", "cmake", "toml", "lock",
         "proto", "thrift", "graphql", "dart", "elm", "erlang", "ex", "exs", "fs", "fsx", "ml", "mli",
         "nim", "pas", "pp", "tcl", "vb", "vbs", "asm", "s", "m", "mm", "plist", "strings",
-        "csv", "tsv", "psv", "dsv"  // 将CSV等数据文件作为文本处理
+        "csv", "tsv", "psv", "dsv"  // Treat CSV-like data files as text.
     )));
 
     private static final Set<String> IMAGE_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -60,7 +60,7 @@ public class WebController {
     private static final Set<String> PDF_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Collections.singletonList("pdf")));
 
     private static final Set<String> WORD_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("doc", "docx")));
-    private static final Set<String> EXCEL_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("xls", "xlsx")));  // 移除CSV
+    private static final Set<String> EXCEL_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("xls", "xlsx")));  // CSV removed.
     private static final Set<String> POWERPOINT_EXTENSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("ppt", "pptx")));
 
     private static final Map<String, String> HIGHLIGHT_LANGUAGE_MAP;
@@ -110,7 +110,7 @@ public class WebController {
     }
 
     /**
-     * 首页 - 重定向到仓库列表
+     * Home - redirect to repository list.
      */
     @GetMapping("/")
     public String index() {
@@ -118,7 +118,7 @@ public class WebController {
     }
 
     /**
-     * 管理首页 - 仓库列表
+     * Admin home - repository list.
      */
     @GetMapping("/admin")
     public String adminIndex(Model model, Principal principal) {
@@ -139,7 +139,7 @@ public class WebController {
     }
 
     /**
-     * 文件预览
+     * File preview.
      */
     @GetMapping("/admin/repo/{name}/file")
     public String previewFile(@PathVariable String name,
@@ -156,13 +156,13 @@ public class WebController {
             File repoDir = repositoryService.getRepositoryPath(normalizedName);
             GitRepositoryService.FileInfo fileInfo = gitRepositoryService.getFileInfo(repoDir, branch, path);
             if (!"file".equals(fileInfo.getType())) {
-                model.addAttribute("error", "目录不支持在线预览");
+                model.addAttribute("error", "Directory preview is not supported.");
                 return "error";
             }
 
             byte[] content = gitRepositoryService.getFileContent(repoDir, branch, path);
             String detectedMime = detectMimeType(fileInfo.getName());
-            // 使用智能内容检测替代原来的简单检测
+            // Use smart content detection instead of simple detection.
             String previewType = determinePreviewTypeWithContentDetection(fileInfo.getName(), detectedMime, content);
             String mimeType = guessMimeType(fileInfo.getName(), previewType, detectedMime);
 
@@ -223,13 +223,13 @@ public class WebController {
             return "error";
         } catch (Exception e) {
             logger.error("Unexpected error preparing file preview for repo {} path {}", name, path, e);
-            model.addAttribute("error", "加载文件预览时发生错误: " + e.getMessage());
+            model.addAttribute("error", "Error loading file preview: " + e.getMessage());
             return "error";
         }
     }
 
     /**
-     * 文件原始内容
+     * Raw file content.
      */
     @GetMapping("/admin/repo/{name}/file/raw")
     public ResponseEntity<byte[]> rawFile(@PathVariable String name,
@@ -239,7 +239,7 @@ public class WebController {
     }
 
     /**
-     * 文件下载
+     * File download.
      */
     @GetMapping("/admin/repo/{name}/file/download")
     public ResponseEntity<byte[]> downloadFile(@PathVariable String name,
@@ -300,16 +300,16 @@ public class WebController {
     }
 
     /**
-     * 智能检测文件内容类型，支持将类文本内容作为文本处理
+     * Smart detection of file content type, allowing text-like content to be treated as text.
      */
     private String determinePreviewTypeWithContentDetection(String fileName, String mimeType, byte[] content) {
-        // 首先使用扩展名和MIME类型检测
+        // First detect by extension and MIME type.
         String previewType = determinePreviewType(fileName, mimeType);
 
-        // 如果检测为binary，尝试智能检测是否为文本内容
+        // If detected as binary, try smart text detection.
         if ("binary".equals(previewType) && content != null && content.length > 0) {
             if (isLikelyTextContent(content)) {
-                // 检测到类文本内容，降级为文本预览
+                // Detected text-like content; downgrade to text preview.
                 return "text";
             }
         }
@@ -318,12 +318,12 @@ public class WebController {
     }
 
     /**
-     * 智能检测内容是否为文本类型
+     * Smart detection for text content.
      */
     private boolean isLikelyTextContent(byte[] content) {
         if (content == null || content.length == 0) return false;
 
-        // 检查前几KB内容
+        // Check the first few KB.
         int checkLength = Math.min(content.length, 8192);
         int controlChars = 0;
         int printableChars = 0;
@@ -332,23 +332,23 @@ public class WebController {
         for (int i = 0; i < checkLength; i++) {
             int b = content[i] & 0xFF;
 
-            // 检查空字节（强烈表示二进制）
+            // Check for null bytes (strong indicator of binary).
             if (b == 0) {
                 nullBytes++;
-                if (nullBytes > 3) return false; // 多个空字节，很可能是二进制
+                if (nullBytes > 3) return false; // Multiple null bytes likely indicate binary.
             }
 
-            // 可打印ASCII字符或常见UTF-8字符
-            if ((b >= 0x20 && b <= 0x7E) || // 可打印ASCII
-                b == 0x09 || b == 0x0A || b == 0x0D || // 制表符、换行符、回车符
-                (b >= 0x80 && b <= 0xFF)) { // 可能的UTF-8字符
+            // Printable ASCII or common UTF-8 bytes.
+            if ((b >= 0x20 && b <= 0x7E) || // Printable ASCII
+                b == 0x09 || b == 0x0A || b == 0x0D || // Tab/newline/carriage return
+                (b >= 0x80 && b <= 0xFF)) { // Likely UTF-8 bytes
                 printableChars++;
             } else if (b < 0x20 && b != 0x09 && b != 0x0A && b != 0x0D) {
                 controlChars++;
             }
         }
 
-        // 如果大部分字符是可打印的，且控制字符很少，认为是文本
+        // Treat as text if most characters are printable and few are control chars.
         double printableRatio = (double) printableChars / checkLength;
         double controlRatio = (double) controlChars / checkLength;
 
@@ -442,7 +442,7 @@ public class WebController {
     }
 
     /**
-     * 创建新分支
+     * Create a new branch.
      */
     @PostMapping("/admin/repo/{name}/branch")
     public String createBranch(@PathVariable String name,
@@ -453,17 +453,17 @@ public class WebController {
             String normalizedName = repositoryService.normalizeRepositoryName(name);
             File repoDir = repositoryService.getRepositoryPath(normalizedName);
             gitRepositoryService.createBranch(repoDir, fromBranch, newBranch);
-            redirectAttributes.addFlashAttribute("success", "分支创建成功: " + newBranch);
+            redirectAttributes.addFlashAttribute("success", "Branch created successfully: " + newBranch);
             return "redirect:/admin/repo/" + normalizedName + "?branch=" + newBranch;
         } catch (Exception e) {
             logger.error("Failed to create branch {} from {}", newBranch, fromBranch, e);
-            redirectAttributes.addFlashAttribute("error", "创建分支失败: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Failed to create branch: " + e.getMessage());
             return "redirect:/admin/repo/" + name + "?branch=" + fromBranch;
         }
     }
 
     /**
-     * 创建仓库页面
+     * Repository creation page.
      */
     @GetMapping("/admin/create")
     public String createRepoPage(Model model) {
@@ -471,7 +471,7 @@ public class WebController {
     }
 
     /**
-     * 处理创建仓库请求
+     * Handle repository creation.
      */
     @PostMapping("/admin/create")
     public String createRepo(@RequestParam String name, RedirectAttributes redirectAttributes) {
@@ -500,7 +500,7 @@ public class WebController {
     }
 
     /**
-     * 仓库详情
+     * Repository details.
      */
     @GetMapping("/admin/repo/{name}")
     public String repoDetail(@PathVariable String name,
@@ -526,14 +526,14 @@ public class WebController {
 
             boolean isEmpty;
             try {
-                // 强制刷新仓库状态
+                // Force refresh repository status.
                 try (Git git = Git.open(repoDir)) {
                     git.getRepository().getRefDatabase().refresh();
                 }
                 isEmpty = gitRepositoryService.isEmptyRepository(repoDir);
             } catch (Exception e) {
                 isEmpty = true;
-                model.addAttribute("gitError", "检查仓库状态时出错: " + e.getMessage());
+                model.addAttribute("gitError", "Error checking repository status: " + e.getMessage());
             }
             model.addAttribute("isEmpty", isEmpty);
             if (debug) model.addAttribute("debugMode", true);
@@ -578,7 +578,7 @@ public class WebController {
                     branches = gitRepositoryService.getBranches(repoDir);
                     model.addAttribute("branches", branches);
                 } catch (Exception e) {
-                    model.addAttribute("gitError", "加载分支信息失败: " + e.getMessage());
+                    model.addAttribute("gitError", "Failed to load branch info: " + e.getMessage());
                 }
 
                 String currentBranch = branch;
@@ -597,7 +597,7 @@ public class WebController {
                         model.addAttribute("commits", commits);
                     } catch (Exception e) {
                         if (model.getAttribute("gitError") == null) {
-                            model.addAttribute("gitError", "加载提交历史失败: " + e.getMessage());
+                            model.addAttribute("gitError", "Failed to load commit history: " + e.getMessage());
                         }
                     }
 
@@ -606,7 +606,7 @@ public class WebController {
                         model.addAttribute("files", files);
                     } catch (Exception e) {
                         if (model.getAttribute("gitError") == null) {
-                            model.addAttribute("gitError", "加载文件列表失败: " + e.getMessage());
+                            model.addAttribute("gitError", "Failed to load file list: " + e.getMessage());
                         }
                     }
                 }
@@ -615,23 +615,23 @@ public class WebController {
             model.addAttribute("debugUrl", "/debug/git/repo/" + normalizedName);
             return "admin/detail";
         } catch (Exception e) {
-            model.addAttribute("error", "加载仓库详情时发生错误: " + e.getMessage());
+            model.addAttribute("error", "Error loading repository details: " + e.getMessage());
             return "error";
         }
     }
 
     /**
-     * 系统信息页面
+     * System info page.
      */
     @GetMapping("/admin/system")
     public String systemInfo(Model model) {
         try {
-            // 系统信息
+            // System info.
             model.addAttribute("javaVersion", System.getProperty("java.version"));
             model.addAttribute("osName", System.getProperty("os.name"));
             model.addAttribute("osVersion", System.getProperty("os.version"));
 
-            // 内存信息
+            // Memory info.
             Runtime runtime = Runtime.getRuntime();
             long maxMemory = runtime.maxMemory();
             long totalMemory = runtime.totalMemory();
@@ -643,7 +643,7 @@ public class WebController {
             model.addAttribute("usedMemory", formatBytes(usedMemory));
             model.addAttribute("freeMemory", formatBytes(freeMemory));
 
-            // 存储信息
+            // Storage info.
             File storageDir = ((com.minigit.service.impl.RepositoryServiceImpl) repositoryService).getStorageDir();
             model.addAttribute("storageDir", storageDir.getAbsolutePath());
             model.addAttribute("totalSpace", formatBytes(storageDir.getTotalSpace()));
@@ -658,7 +658,7 @@ public class WebController {
     }
 
     /**
-     * 获取国际化消息
+     * Get localized message.
      */
     private String getMessage(String key, Object... args) {
         Locale locale = LocaleContextHolder.getLocale();
@@ -666,10 +666,10 @@ public class WebController {
     }
 
     /**
-     * 根据请求获取基础URL，尊重反向代理头
+     * Build base URL from request, respecting reverse-proxy headers.
      */
     private String getBaseUrl(HttpServletRequest request) {
-        // 优先使用 X-Forwarded-* 头
+        // Prefer X-Forwarded-* headers.
         String scheme = getFirstHeader(request, "X-Forwarded-Proto");
         if (scheme == null || scheme.isEmpty()) scheme = request.getScheme();
 
@@ -678,7 +678,7 @@ public class WebController {
         if (forwardedHost != null && !forwardedHost.isEmpty()) {
             host = forwardedHost;
         } else {
-            // Host 头可能包含端口
+            // Host header may include port.
             String hostHeader = request.getHeader("Host");
             if (hostHeader != null && !hostHeader.isEmpty()) {
                 host = hostHeader;
@@ -689,7 +689,7 @@ public class WebController {
             }
         }
 
-        // 解析 host 与 port，支持 [IPv6]:port 格式
+        // Parse host and port, support [IPv6]:port format.
         String hostname;
         Integer portFromHost = null;
         if (host.startsWith("[")) {
@@ -700,7 +700,7 @@ public class WebController {
                     try { portFromHost = Integer.parseInt(host.substring(rb + 2)); } catch (NumberFormatException ignored) {}
                 }
             } else {
-                // 不完整的 IPv6 表示，兜底按原样处理
+                // Incomplete IPv6; fall back to raw host.
                 hostname = host;
             }
         } else {
@@ -724,7 +724,7 @@ public class WebController {
                 || ("https".equalsIgnoreCase(scheme) && port == 443);
         StringBuilder base = new StringBuilder();
         base.append(scheme).append("://");
-        // 输出时对 IPv6 加[]
+        // Add brackets for IPv6 when rendering.
         if (hostname != null && hostname.contains(":") && !hostname.startsWith("[")) {
             base.append('[').append(hostname).append(']');
         } else {
@@ -742,7 +742,7 @@ public class WebController {
     }
 
     /**
-     * 获取克隆URL
+     * Get clone URL.
      */
     private String getCloneUrl(String repoName, HttpServletRequest request) {
         String base = getBaseUrl(request);
@@ -750,7 +750,7 @@ public class WebController {
     }
 
     /**
-     * 计算目录大小
+     * Calculate directory size.
      */
     private long getDirectorySize(File directory) {
         long size = 0;
@@ -767,7 +767,7 @@ public class WebController {
     }
 
     /**
-     * 格式化字节大小
+     * Format byte size.
      */
     private String formatBytes(long bytes) {
         if (bytes < 1024) return bytes + " B";

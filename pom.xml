@@ -102,21 +102,21 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>2.7.18</version>
                 <executions>
-                    <!-- 1) 服务器 JAR（和现在一样） -->
+                    <!-- 1) Server JAR (same as before) -->
                     <execution>
                         <id>repackage-server</id>
                         <goals><goal>repackage</goal></goals>
                         <configuration>
-                            <!-- 你的服务端主类 -->
+                            <!-- Server main class -->
                             <mainClass>com.minigit.MiniGitServerApplication</mainClass>
                         </configuration>
                     </execution>
-                    <!-- 2) 客户端 JAR（附加一个 classifier=client） -->
+                    <!-- 2) Client JAR (with classifier=client) -->
                     <execution>
                         <id>repackage-client</id>
                         <goals><goal>repackage</goal></goals>
                         <configuration>
-                            <!-- 你的客户端入口类（你说的这个） -->
+                            <!-- Client entry class -->
                             <mainClass>com.minigit.util.GitClientMain</mainClass>
                             <classifier>client</classifier>
                         </configuration>

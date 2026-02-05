@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 仓库管理REST控制器
+ * Repository management REST controller.
  */
 @RestController
 @RequestMapping("/api/repos")
@@ -33,14 +33,14 @@ public class RepositoryController {
     }
 
     /**
-     * 创建仓库
+     * Create repository.
      */
     @PostMapping
     public ResponseEntity<?> createRepository(@RequestParam String name) {
         try {
             logger.info("Creating repository: {}", name);
             
-            // 验证仓库名称
+            // Validate repository name.
             if (name == null || name.trim().isEmpty()) {
                 return createErrorResponse("INVALID_NAME", "validation.name.required", HttpStatus.BAD_REQUEST);
             }
@@ -49,13 +49,13 @@ public class RepositoryController {
                 return createErrorResponse("INVALID_NAME", "validation.name.invalid", HttpStatus.BAD_REQUEST);
             }
             
-            // 检查仓库是否已存在
+            // Check if repository already exists.
             String normalizedName = repositoryService.normalizeRepositoryName(name);
             if (repositoryService.repositoryExists(normalizedName)) {
                 return createErrorResponse("REPO_ALREADY_EXISTS", "repo.exists", HttpStatus.BAD_REQUEST, normalizedName);
             }
             
-            // 创建仓库
+            // Create repository.
             File repoDir = repositoryService.createRepository(name);
             
             logger.info("Repository created successfully: {}", normalizedName);
@@ -71,7 +71,7 @@ public class RepositoryController {
     }
 
     /**
-     * 列出所有仓库
+     * List repositories.
      */
     @GetMapping
     public ResponseEntity<List<String>> listRepositories() {
@@ -86,7 +86,7 @@ public class RepositoryController {
     }
 
     /**
-     * 创建错误响应
+     * Create error response.
      */
     private ResponseEntity<ErrorResponse> createErrorResponse(String errorCode, String messageKey, HttpStatus status, Object... args) {
         Locale locale = LocaleContextHolder.getLocale();

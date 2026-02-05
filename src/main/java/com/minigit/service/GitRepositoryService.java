@@ -22,7 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * Git仓库操作服务
+ * Git repository operation service.
  */
 @Service
 public class GitRepositoryService {
@@ -328,13 +328,13 @@ public class GitRepositoryService {
         return files;
     }
 
-// 在 GitRepositoryService 中修改 isEmptyRepository 方法
+// Updated isEmptyRepository method in GitRepositoryService.
 public boolean isEmptyRepository(File repoDir) throws Exception {
     try (Repository repository = Git.open(repoDir).getRepository()) {
-        // 检查是否有任何引用
+        // Check whether any refs exist.
         Collection<Ref> refs = repository.getRefDatabase().getRefs();
 
-        // 过滤掉非分支引用，只看 heads
+        // Filter non-branch refs; only check heads.
         boolean hasBranches = refs.stream()
             .anyMatch(ref -> ref.getName().startsWith("refs/heads/"));
 
@@ -342,24 +342,24 @@ public boolean isEmptyRepository(File repoDir) throws Exception {
             return true;
         }
         
-        // 进一步检查是否有实际的提交
+        // Further check whether real commits exist.
         try {
             ObjectId headId = repository.resolve("HEAD");
             if (headId != null) {
-                return false; // 有 HEAD 指向的提交
+                return false; // There is a commit pointed to by HEAD.
             }
 
-            // 如果 HEAD 为空，检查所有分支
+            // If HEAD is null, check all branches.
             for (Ref ref : refs) {
                 if (ref.getName().startsWith("refs/heads/")) {
                     ObjectId objectId = ref.getObjectId();
                     if (objectId != null) {
-                        return false; // 找到有效的分支提交
+                        return false; // Found a valid branch commit.
                     }
                 }
             }
         } catch (Exception e) {
-            // 如果无法解析提交，可能确实是空仓库
+            // If commits cannot be resolved, it may truly be empty.
             logger.debug("Cannot resolve commits in repository: " + e.getMessage());
         }
 

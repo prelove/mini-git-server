@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.time.Instant;
 
 /**
- * Git访问日志记录器
+ * Git access logger.
  */
 @Component
 public class GitAccessLogger {
@@ -16,7 +16,7 @@ public class GitAccessLogger {
     private static final Logger logger = LoggerFactory.getLogger("com.minigit.git.access");
 
     /**
-     * 记录Git操作
+     * Record a Git operation.
      */
     public void logGitOperation(HttpServletRequest request, String repository, String operation, String user, boolean success, long duration) {
         String clientIp = getClientIpAddress(request);
@@ -35,7 +35,7 @@ public class GitAccessLogger {
     }
 
     /**
-     * 获取客户端IP地址
+     * Get client IP address.
      */
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");

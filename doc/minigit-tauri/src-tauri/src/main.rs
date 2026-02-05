@@ -12,7 +12,7 @@ use std::{
 
 use tauri::{AppHandle, Manager};
 
-// 保存后端子进程，便于退出时清理
+// Store backend child process for cleanup on exit.
 struct Backend(Arc<Mutex<Option<Child>>>);
 
 #[cfg(windows)]
@@ -31,12 +31,12 @@ fn exe_dir() -> PathBuf {
 
 fn locate_server_jar() -> Option<PathBuf> {
   let exe = exe_dir();
-  // 1) EXE 同目录 resources\backend\server.jar
+  // 1) resources\\backend\\server.jar next to the EXE.
   let p = exe.join("resources").join("backend").join("server.jar");
   if p.is_file() {
     return Some(p);
   }
-  // 2) EXE 同目录下的 server.jar（便携场景）
+  // 2) server.jar next to the EXE (portable scenario).
   let p2 = exe.join("server.jar");
   if p2.is_file() {
     return Some(p2);
@@ -46,12 +46,12 @@ fn locate_server_jar() -> Option<PathBuf> {
 
 fn locate_java_bin() -> PathBuf {
   let exe = exe_dir();
-  // 优先内置 JRE（隐藏黑窗使用 javaw.exe）
+  // Prefer bundled JRE (use javaw.exe to hide the console window).
   let javaw = exe.join("resources").join("jre").join("bin").join("javaw.exe");
   if javaw.is_file() {
     return javaw;
   }
-  // 退回 PATH
+  // Fall back to PATH.
   if cfg!(windows) {
     PathBuf::from("javaw.exe")
   } else {
@@ -68,7 +68,7 @@ fn spawn_backend(_app: &AppHandle, port: u16) -> std::io::Result<Child> {
   #[cfg(windows)]
   let mut cmd = {
     let mut c = Command::new(&java_cmd);
-    c.creation_flags(CREATE_NO_WINDOW); // 隐藏黑窗
+    c.creation_flags(CREATE_NO_WINDOW); // Hide console window.
     c
   };
 
@@ -100,7 +100,7 @@ fn wait_port(port: u16, timeout_secs: u64) -> bool {
 }
 
 fn set_status(win: &tauri::webview::WebviewWindow, text: &str) {
-  // 使用单引号，避免与 Rust 字符串冲突；全部 ASCII 标点，防止编译器把全角标点当非法 token
+  // Use single quotes to avoid Rust string conflicts; ASCII punctuation only to prevent invalid tokens.
   let js = format!(
     "var s=document.querySelector('#status'); if(s) s.innerText='{}';",
     text.replace('\\', "\\\\").replace('\'', "\\'")
@@ -110,17 +110,17 @@ fn set_status(win: &tauri::webview::WebviewWindow, text: &str) {
 
 fn navigate_to_backend(win: &tauri::webview::WebviewWindow, port: u16) {
   let url = format!("http://127.0.0.1:{}/", port);
-  // 直接用 JS 跳转，避免使用私有 WebviewUrl 枚举
+  // Use JS navigation to avoid private WebviewUrl enum usage.
   let _ = win.eval(&format!("window.location.replace('{}');", url));
 }
 
 fn main() {
   tauri::Builder::default()
     .setup(|app| {
-      // 管理后端进程
+      // Manage backend process.
       app.manage(Backend(Arc::new(Mutex::new(None))));
 
-      // 取主窗口并最大化 + 初始提示
+      // Get main window, maximize, and set initial status.
       if let Some(win) = app.get_webview_window("main") {
         let _ = win.maximize();
         set_status(&win, &format!("Starting Mini Git Server on port {} ...", PORT));
@@ -128,7 +128,7 @@ fn main() {
 
       let ah = app.handle().clone();
 
-      // 启动后端
+      // Start backend.
       thread::spawn({
         let ah = ah.clone();
         move || {
@@ -145,7 +145,7 @@ fn main() {
         }
       });
 
-      // 轮询端口，就绪后跳转
+      // Poll port and redirect when ready.
       thread::spawn(move || {
         let ok = wait_port(PORT, 30);
         if let Some(win) = ah.get_webview_window("main") {

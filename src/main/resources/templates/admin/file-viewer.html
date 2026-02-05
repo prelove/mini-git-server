@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${fileName != null ? fileName : '文件预览'} + ' - Mini Git Server'">文件预览 - Mini Git Server</title>
+    <title th:text="${fileName != null ? fileName : 'File Preview'} + ' - Mini Git Server'">File Preview - Mini Git Server</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pptxjs@2.12.0/dist/pptxjs.min.css">
@@ -193,29 +193,29 @@
         <span th:text="${repoName}">repository.git</span>
     </div>
     <div>
-        <a th:if="${backUrl != null}" th:href="${backUrl}" class="back-link">← 返回仓库</a>
+        <a th:if="${backUrl != null}" th:href="${backUrl}" class="back-link">← Back to Repository</a>
     </div>
 </header>
 
 <div class="container">
     <div class="card">
-        <h2>📄 <span th:text="${fileName}">文件名</span></h2>
+        <h2>📄 <span th:text="${fileName}">Filename</span></h2>
         <div class="info-grid">
-            <div class="info-label">分支</div>
-            <div class="info-value" th:text="${branch != null ? branch : '默认分支'}">main</div>
-            <div class="info-label">路径</div>
+            <div class="info-label">Branch</div>
+            <div class="info-value" th:text="${branch != null ? branch : 'Default branch'}">main</div>
+            <div class="info-label">Path</div>
             <div class="info-value" th:text="${filePath}">README.md</div>
-            <div class="info-label">大小</div>
+            <div class="info-label">Size</div>
             <div class="info-value" th:text="${fileSizeFormatted}">1.2 KB</div>
-            <div class="info-label">类型</div>
+            <div class="info-label">Type</div>
             <div class="info-value" th:text="${previewType}">text</div>
         </div>
         <div class="actions">
-            <a th:href="${downloadUrl}" class="btn">⬇️ 下载文件</a>
-            <a th:href="${rawUrl}" class="btn secondary" target="_blank" rel="noopener">查看原始内容</a>
+            <a th:href="${downloadUrl}" class="btn">⬇️ Download File</a>
+            <a th:href="${rawUrl}" class="btn secondary" target="_blank" rel="noopener">View Raw Content</a>
         </div>
-        <div class="preview-meta" th:if="${tooLargeForInline}">提示: 文件超过 1 MB，已禁用直接渲染，请下载或查看原始内容。</div>
-        <div class="preview-meta" th:if="${binaryDetected}">提示: 文件包含二进制内容，无法作为文本渲染。</div>
+        <div class="preview-meta" th:if="${tooLargeForInline}">Note: The file exceeds 1 MB, inline rendering is disabled. Please download or view raw content.</div>
+        <div class="preview-meta" th:if="${binaryDetected}">Note: The file contains binary content and cannot be rendered as text.</div>
     </div>
 
     <div class="card preview-card">
@@ -234,40 +234,40 @@
                     <iframe th:src="${pdfData}" class="pdf-frame"></iframe>
                 </div>
                 <div th:case="*">
-                    <div class="preview-placeholder">暂不支持该类型的内嵌预览，请下载查看。</div>
+                    <div class="preview-placeholder">Inline preview is not supported for this file type. Please download it.</div>
                 </div>
             </div>
 
             <div th:if="${clientRenderOffice}">
-                <div id="office-status" class="office-progress">正在加载 Office 文档预览...</div>
+                <div id="office-status" class="office-progress">Loading Office document preview...</div>
                 <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper" style="display:none;"></div>
                 <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container" style="display:none;"></div>
                 <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper" style="display:none;"></div>
 
-                <!-- 降级预览选项 -->
+                <!-- Fallback preview options -->
                 <div id="office-fallback" style="display:none;" class="preview-placeholder">
-                    <h3>📄 Office 文档信息</h3>
-                    <p th:text="'文件名: ' + ${fileName}">文件名</p>
-                    <p th:text="'文件大小: ' + ${fileSizeFormatted}">文件大小</p>
-                    <p th:text="'文件类型: ' + ${previewType}">文件类型</p>
+                    <h3>📄 Office Document Info</h3>
+                    <p th:text="'Filename: ' + ${fileName}">Filename</p>
+                    <p th:text="'File size: ' + ${fileSizeFormatted}">File size</p>
+                    <p th:text="'File type: ' + ${previewType}">File type</p>
                     <div class="alert" style="margin-top: 1.5rem;">
-                        <p><strong>💡 预览提示：</strong></p>
-                        <p>• Office 文档需要专用软件打开以获得最佳体验</p>
-                        <p>• 建议下载后使用 Microsoft Office 或 WPS Office 打开</p>
-                        <p>• 对于 Excel 文件，也可以使用 Google Sheets 等在线工具</p>
+                        <p><strong>💡 Preview tips:</strong></p>
+                        <p>• Office documents are best opened with dedicated software.</p>
+                        <p>• Download and open with Microsoft Office or WPS Office.</p>
+                        <p>• For Excel files, Google Sheets is another option.</p>
                     </div>
                     <div style="margin-top: 1.5rem;">
-                        <a th:href="${downloadUrl}" class="btn" style="display: inline-block;">📥 立即下载</a>
-                        <a th:href="${rawUrl}" class="btn secondary" style="display: inline-block; margin-left: 0.5rem;" target="_blank">🔍 查看原始文件</a>
+                        <a th:href="${downloadUrl}" class="btn" style="display: inline-block;">📥 Download now</a>
+                        <a th:href="${rawUrl}" class="btn secondary" style="display: inline-block; margin-left: 0.5rem;" target="_blank">🔍 View raw file</a>
                     </div>
                 </div>
 
-                <div class="office-hint">若预览失败，系统将自动切换到下载模式。</div>
+                <div class="office-hint">If preview fails, the system will switch to download mode.</div>
             </div>
         </div>
         <div th:if="${!previewAvailable}" class="preview-placeholder">
-            <p>暂不支持此文件类型的在线预览。</p>
-            <p>你仍然可以通过上方的按钮下载或查看原始内容。</p>
+            <p>Online preview is not supported for this file type.</p>
+            <p>You can still download or view the raw content using the buttons above.</p>
         </div>
     </div>
 </div>
@@ -305,7 +305,7 @@
     }
 
     if (clientRenderOffice && rawUrl) {
-        // 检查所需的库是否已加载
+        // Check that required libraries are loaded.
         let libraryCheckPassed = false;
         if (previewType === 'word' && window.docx && typeof window.docx.renderAsync === 'function') {
             libraryCheckPassed = true;
@@ -316,7 +316,7 @@
         }
 
         if (!libraryCheckPassed) {
-            console.warn('Office 预览库未正确加载，切换到降级模式');
+            console.warn('Office preview libraries failed to load. Switching to fallback mode.');
             showFallback();
             return;
         }
@@ -324,20 +324,20 @@
         fetch(rawUrl)
             .then(function (response) {
                 if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ': 无法加载文件');
+                    throw new Error('HTTP ' + response.status + ': Failed to load file');
                 }
                 return response.arrayBuffer();
             })
             .then(function (buffer) {
                 if (!buffer || buffer.byteLength === 0) {
-                    throw new Error('文件内容为空');
+                    throw new Error('File content is empty');
                 }
 
                 try {
                     if (previewType === 'word') {
                         const container = document.getElementById('docx-container');
                         if (!container) {
-                            throw new Error('预览容器不存在');
+                            throw new Error('Preview container not found');
                         }
 
                         window.docx.renderAsync(buffer, container, null, {
@@ -346,14 +346,14 @@
                         }).then(function () {
                             hideStatusShowContainer('docx-container');
                         }).catch(function (error) {
-                            console.error('Word 预览失败:', error);
+                            console.error('Word preview failed:', error);
                             showFallback();
                         });
 
                     } else if (previewType === 'excel') {
                         const container = document.getElementById('excel-container');
                         if (!container) {
-                            throw new Error('预览容器不存在');
+                            throw new Error('Preview container not found');
                         }
 
                         try {
@@ -364,7 +364,7 @@
                             });
 
                             if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                                throw new Error('Excel 文件没有工作表');
+                                throw new Error('The Excel file has no sheets');
                             }
 
                             container.innerHTML = '';
@@ -375,7 +375,7 @@
                                     const sheet = workbook.Sheets[name];
                                     if (sheet) {
                                         const html = window.XLSX.utils.sheet_to_html(sheet, {
-                                            header: '<h4>工作表 ' + (index + 1) + ': ' + name + '</h4>',
+                                            header: '<h4>Sheet ' + (index + 1) + ': ' + name + '</h4>',
                                             editable: false
                                         });
 
@@ -387,24 +387,24 @@
                                         }
                                     }
                                 } catch (sheetError) {
-                                    console.warn('处理工作表失败:', name, sheetError);
+                                    console.warn('Failed to process worksheet:', name, sheetError);
                                 }
                             });
 
                             if (hasValidSheet) {
                                 hideStatusShowContainer('excel-container');
                             } else {
-                                throw new Error('无法读取 Excel 工作表内容');
+                                throw new Error('Unable to read Excel sheet content');
                             }
                         } catch (excelError) {
-                            console.error('Excel 解析失败:', excelError);
+                            console.error('Excel parse failed:', excelError);
                             throw excelError;
                         }
 
                     } else if (previewType === 'powerpoint') {
                         const container = document.getElementById('ppt-container');
                         if (!container) {
-                            throw new Error('预览容器不存在');
+                            throw new Error('Preview container not found');
                         }
 
                         const blob = new Blob([buffer], {
@@ -416,22 +416,22 @@
                             hideStatusShowContainer('ppt-container');
                             URL.revokeObjectURL(url);
                         }).catch(function (error) {
-                            console.error('PowerPoint 预览失败:', error);
+                            console.error('PowerPoint preview failed:', error);
                             URL.revokeObjectURL(url);
                             showFallback();
                         });
                     }
                 } catch (renderError) {
-                    console.error('文档渲染失败:', renderError);
+                    console.error('Document render failed:', renderError);
                     showFallback();
                 }
             })
             .catch(function (error) {
-                console.error('Office 文档加载失败:', error);
+                console.error('Failed to load Office document:', error);
                 showFallback();
             });
     } else if (clientRenderOffice) {
-        // 如果需要Office预览但没有rawUrl，直接显示降级界面
+        // When Office preview is required but rawUrl is missing, show fallback directly.
         showFallback();
     }
 </script>

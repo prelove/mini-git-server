@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Git调试控制器
+ * Git debug controller.
  */
 @RestController
 @RequestMapping("/debug/git")
@@ -32,7 +32,7 @@ public class GitDebugController {
     }
 
     /**
-     * 调试仓库状态
+     * Debug repository status.
      */
     @GetMapping("/repo/{name}")
     public Map<String, Object> debugRepository(@PathVariable String name) {
@@ -47,7 +47,7 @@ public class GitDebugController {
             debug.put("repoExists", repoDir.exists());
             debug.put("isDirectory", repoDir.isDirectory());
             
-            // 列出仓库目录内容
+            // List repository directory contents.
             if (repoDir.exists()) {
                 File[] files = repoDir.listFiles();
                 if (files != null) {
@@ -59,7 +59,7 @@ public class GitDebugController {
                 }
             }
             
-            // 尝试打开Git仓库
+            // Try to open Git repository.
             try (Repository repository = new FileRepositoryBuilder()
                     .setGitDir(repoDir)
                     .setMustExist(true)
@@ -69,7 +69,7 @@ public class GitDebugController {
                 debug.put("gitDirPath", repository.getDirectory().getAbsolutePath());
                 
                 try (Git git = new Git(repository)) {
-                    // 获取所有引用
+                    // Get all refs.
                     List<Ref> refs = git.branchList().call();
                     Map<String, String> branches = new HashMap<>();
                     for (Ref ref : refs) {
@@ -77,7 +77,7 @@ public class GitDebugController {
                     }
                     debug.put("branches", branches);
                     
-                    // 获取HEAD引用
+                    // Get HEAD ref.
                     Ref head = repository.exactRef("HEAD");
                     if (head != null) {
                         debug.put("HEAD", head.getName());
@@ -85,7 +85,7 @@ public class GitDebugController {
                         debug.put("HEADObjectId", head.getObjectId() != null ? head.getObjectId().getName() : "null");
                     }
                     
-                    // 尝试获取提交
+                    // Try to get commits.
                     try {
                         List<GitRepositoryService.CommitInfo> commits = gitRepositoryService.getCommitLog(repoDir, 5);
                         debug.put("commitCount", commits.size());
@@ -94,7 +94,7 @@ public class GitDebugController {
                         debug.put("commitError", e.getMessage());
                     }
                     
-                    // 尝试获取分支
+                    // Try to get branches.
                     try {
                         List<GitRepositoryService.BranchInfo> branchInfos = gitRepositoryService.getBranches(repoDir);
                         debug.put("branchInfoCount", branchInfos.size());

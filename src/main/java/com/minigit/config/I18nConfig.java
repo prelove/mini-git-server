@@ -13,7 +13,7 @@ import org.springframework.web.servlet.i18n.SessionLocaleResolver;
 import java.util.Locale;
 
 /**
- * 国际化配置
+ * Internationalization configuration.
  */
 @Configuration
 public class I18nConfig implements WebMvcConfigurer {
@@ -30,7 +30,7 @@ public class I18nConfig implements WebMvcConfigurer {
         messageSource.setBasename("classpath:messages");
         messageSource.setDefaultEncoding("UTF-8");
         messageSource.setCacheSeconds(3600);
-        // 设置默认fallback
+        // Set default fallback.
         messageSource.setFallbackToSystemLocale(false);
         return messageSource;
     }
@@ -39,12 +39,9 @@ public class I18nConfig implements WebMvcConfigurer {
     public LocaleResolver localeResolver() {
         SessionLocaleResolver localeResolver = new SessionLocaleResolver();
         
-        // 设置默认语言 - 使用明确的Locale构造器
+        // Set default locale - use explicit Locale constructor.
         String defaultLang = vcsProperties.getLang().getDefaultLang();
         switch (defaultLang.toLowerCase()) {
-            case "zh":
-                localeResolver.setDefaultLocale(new Locale("zh", "CN"));
-                break;
             case "ja":
                 localeResolver.setDefaultLocale(new Locale("ja", "JP"));
                 break;
@@ -60,7 +57,7 @@ public class I18nConfig implements WebMvcConfigurer {
     @Bean
     public LocaleChangeInterceptor localeChangeInterceptor() {
         LocaleChangeInterceptor lci = new LocaleChangeInterceptor();
-        lci.setParamName("lang"); // URL参数名
+        lci.setParamName("lang"); // URL parameter name.
         return lci;
     }
 

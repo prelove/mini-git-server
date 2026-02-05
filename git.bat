@@ -1,15 +1,15 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-rem ====== 配置区：找到你的 client JAR ======
-rem 优先使用环境变量（可在系统里永久设置）
+rem ====== Config: locate the client JAR ======
+rem Prefer the environment variable (can be set permanently).
 if defined MGIT_JAR (
   set "JAR=%MGIT_JAR%"
 ) else (
-  rem 方案1：git.bat 与 JAR 放一起
+  rem Option 1: git.bat next to the JAR.
   set "JAR=%~dp0mini-git-server-1.0.0-client.jar"
   if not exist "%JAR%" (
-    rem 方案2：git.bat 上级的 target 目录（常见于项目根下的 scripts\git.bat）
+    rem Option 2: target directory above git.bat (common in scripts\git.bat under repo root).
     set "JAR=%~dp0..\target\mini-git-server-1.0.0-client.jar"
   )
 )
@@ -19,7 +19,7 @@ if not exist "%JAR%" (
   exit /b 1
 )
 
-rem ====== 解析 -C 目录（可多次出现，最后一次生效）======
+rem ====== Parse -C directory (can appear multiple times, last wins) ======
 set "REPO=%CD%"
 :parseC
 if /I "%~1"=="-C" (
@@ -33,7 +33,7 @@ if /I "%~1"=="-C" (
   goto parseC
 )
 
-rem ====== 没有子命令：显示帮助 ======
+rem ====== No subcommand: show help ======
 if "%~1"=="" (
   echo Mini Git (mgit) wrapper - using %JAR%
   echo.
@@ -45,7 +45,7 @@ if "%~1"=="" (
 set "CMD=%~1"
 shift
 
-rem ====== 常见命令映射 ======
+rem ====== Common command mapping ======
 if /I "%CMD%"=="--version" (
   echo git version (mgit wrapper)
   exit /b 0
@@ -57,14 +57,14 @@ if /I "%CMD%"=="help" (
 )
 
 if /I "%CMD%"=="init" (
-  rem git -C X init  -> mgit init X（若未给目标目录，则用 -C 指定或当前目录）
+  rem git -C X init  -> mgit init X (use -C or current directory when target is omitted).
   if "%~1"=="" ( set "TARGET=%REPO%" ) else ( set "TARGET=%~1" )
   java -jar "%JAR%" init "%TARGET%"
   exit /b %ERRORLEVEL%
 )
 
 if /I "%CMD%"=="clone" (
-  rem 原样转发：git clone <url> <dir> [--user U --pass P]
+  rem Pass-through: git clone <url> <dir> [--user U --pass P]
   java -jar "%JAR%" clone %*
   exit /b %ERRORLEVEL%
 )
@@ -85,20 +85,20 @@ if /I "%CMD%"=="add" (
 )
 
 if /I "%CMD%"=="commit" (
-  rem 透传 commit 选项（-m 等），自动加上 repo
+  rem Pass through commit options (-m, etc) and add repo automatically.
   java -jar "%JAR%" commit "%REPO%" %*
   exit /b %ERRORLEVEL%
 )
 
 if /I "%CMD%"=="log" (
-  rem 支持 --max N 透传
+  rem Pass through --max N.
   java -jar "%JAR%" log "%REPO%" %*
   exit /b %ERRORLEVEL%
 )
 
 if /I "%CMD%"=="branch" (
-  rem 列表：git branch -> mgit branch <repo>
-  rem 创建：git branch -c <name> -> mgit branch -c <repo> <name>
+  rem List: git branch -> mgit branch <repo>
+  rem Create: git branch -c <name> -> mgit branch -c <repo> <name>
   if /I "%~1"=="-c" (
     if "%~2"=="" (
       echo usage: git branch -c ^<name^>
@@ -121,7 +121,7 @@ if /I "%CMD%"=="checkout" (
 )
 
 if /I "%CMD%"=="remote" (
-  rem 仅支持 -v
+  rem Only -v is supported.
   if /I "%~1"=="-v" (
     java -jar "%JAR%" remote -v "%REPO%"
     exit /b %ERRORLEVEL%
@@ -148,7 +148,7 @@ if /I "%CMD%"=="pull" (
   exit /b %ERRORLEVEL%
 )
 
-rem ====== 未覆盖的子命令 ======
+rem ====== Unsupported subcommands ======
 echo [git.bat] Unsupported command: %CMD%
 echo Supported: init, clone, status, add, commit, log, branch, checkout, remote -v, push, pull
 exit /b 3

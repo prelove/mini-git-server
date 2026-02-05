@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 调试控制器 - 仅用于开发调试
+ * Debug controller - for development only.
  */
 @RestController
 @RequestMapping("/debug")
@@ -25,7 +25,7 @@ public class DebugController {
     }
 
     /**
-     * 显示当前配置信息
+     * Display current configuration info.
      */
     @GetMapping("/config")
     public Map<String, Object> showConfig() {

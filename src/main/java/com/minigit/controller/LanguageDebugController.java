@@ -12,7 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 语言调试控制器
+ * Language debug controller.
  */
 @RestController
 @RequestMapping("/debug")
@@ -25,7 +25,7 @@ public class LanguageDebugController {
     }
 
     /**
-     * 调试当前语言设置
+     * Debug current locale settings.
      */
     @GetMapping("/locale")
     public Map<String, Object> debugLocale(HttpServletRequest request) {
@@ -38,11 +38,11 @@ public class LanguageDebugController {
         debug.put("country", currentLocale.getCountry());
         debug.put("displayName", currentLocale.getDisplayName());
         
-        // 测试消息
+        // Test message.
         debug.put("titleMessage", messageSource.getMessage("ui.title", null, "DEFAULT", currentLocale));
         debug.put("welcomeMessage", messageSource.getMessage("ui.welcome", null, "DEFAULT", currentLocale));
         
-        // 请求头信息
+        // Request header info.
         debug.put("acceptLanguage", request.getHeader("Accept-Language"));
         debug.put("langParam", request.getParameter("lang"));
         

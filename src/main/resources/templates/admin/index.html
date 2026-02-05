@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="#{ui.title} + ' - ' + #{ui.repositories}">Mini Git Server - 管理后台</title>
+    <title th:text="#{ui.title} + ' - ' + #{ui.repositories}">Mini Git Server - Admin</title>
     <style>
         * {
             margin: 0;
@@ -207,9 +207,6 @@
             </div>
             <div class="header-actions">
                 <div class="language-selector">
-                    <a href="?lang=zh" 
-                       th:class="${#locale.language == 'zh'} ? 'active' : ''"
-                       title="中文">中文</a>
                     <a href="?lang=en" 
                        th:class="${#locale.language == 'en'} ? 'active' : ''"
                        title="English">EN</a>
@@ -219,9 +216,9 @@
                 </div>
 
                 <div class="user-info">
-                    <span th:text="#{ui.welcome} + ', ' + ${username}">欢迎, admin</span>
+                    <span th:text="#{ui.welcome} + ', ' + ${username}">Welcome, admin</span>
                     <form th:action="@{/logout}" method="post" style="display: inline;">
-                        <button type="submit" class="btn" th:text="#{ui.logout}" style="border: none; background: #3498db; color: white; cursor: pointer; padding: 0.5rem 1rem; border-radius: 5px; font-size: 0.9rem;">登出</button>
+                        <button type="submit" class="btn" th:text="#{ui.logout}" style="border: none; background: #3498db; color: white; cursor: pointer; padding: 0.5rem 1rem; border-radius: 5px; font-size: 0.9rem;">Logout</button>
                     </form>
                 </div>
             </div>
@@ -234,19 +231,19 @@
     
     <nav class="nav">
         <div class="nav-content">
-            <a href="/admin" class="active" th:text="#{ui.repositories}">仓库管理</a>
-            <a href="/admin/system" th:text="#{ui.system.info}">系统信息</a>
-            <a href="/actuator/health" th:text="#{ui.health.check}">系统健康</a>
+            <a href="/admin" class="active" th:text="#{ui.repositories}">Repositories</a>
+            <a href="/admin/system" th:text="#{ui.system.info}">System Info</a>
+            <a href="/actuator/health" th:text="#{ui.health.check}">Health Check</a>
         </div>
     </nav>
     
     <div class="container">
-        <!-- 调试信息（临时） -->
+        <!-- Debug info (temporary) -->
         <div class="debug-info" style="display: block;">
-            🔍 调试信息: 当前语言=<span th:text="${#locale}">locale</span> | 
-            语言代码=<span th:text="${#locale.language}">lang</span> | 
-            国家代码=<span th:text="${#locale.country}">country</span> |
-            <a href="/debug/locale" target="_blank" style="color: #0c5460;">详细调试信息</a>
+            🔍 Debug info: Locale=<span th:text="${#locale}">locale</span> | 
+            Language=<span th:text="${#locale.language}">lang</span> | 
+            Country=<span th:text="${#locale.country}">country</span> |
+            <a href="/debug/locale" target="_blank" style="color: #0c5460;">More details</a>
         </div>
         
         <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
@@ -254,28 +251,28 @@
         
         <div class="stats">
             <div class="stat-card">
-                <h3 th:text="#{ui.repo.count}">仓库总数</h3>
+                <h3 th:text="#{ui.repo.count}">Repository Count</h3>
                 <div class="stat-value" th:text="${repoCount}">0</div>
             </div>
             <div class="stat-card">
-                <h3 th:text="#{ui.storage.dir}">存储目录</h3>
+                <h3 th:text="#{ui.storage.dir}">Storage Directory</h3>
                 <div style="font-size: 0.9rem; word-break: break-all;" th:text="${storageDir}">./data/repos</div>
             </div>
         </div>
         
         <div class="actions">
-            <a href="/admin/create" class="btn btn-success" th:text="'➕ ' + #{ui.create.repo}">➕ 创建新仓库</a>
+            <a href="/admin/create" class="btn btn-success" th:text="'➕ ' + #{ui.create.repo}">➕ Create Repository</a>
         </div>
         
         <div class="repo-list">
-            <h2 th:text="'📚 ' + #{ui.repo.list}">📚 仓库列表</h2>
+            <h2 th:text="'📚 ' + #{ui.repo.list}">📚 Repository List</h2>
             <div th:if="${repositories.empty}" class="empty-state">
-                <p th:text="#{repo.empty.hint}">暂无仓库，点击上方按钮创建第一个仓库</p>
+                <p th:text="#{repo.empty.hint}">No repositories yet. Click above to create the first one.</p>
             </div>
             <div th:each="repo : ${repositories}" class="repo-item">
                 <div class="repo-name" th:text="${repo}">repository.git</div>
                 <div class="repo-actions">
-                    <a th:href="@{'/admin/repo/' + ${repo}}" th:text="'📋 ' + #{ui.repo.detail}">📋 详情</a>
+                    <a th:href="@{'/admin/repo/' + ${repo}}" th:text="'📋 ' + #{ui.repo.detail}">📋 Details</a>
                 </div>
             </div>
         </div>

@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Git HTTP服务配置
+ * Git HTTP service configuration.
  */
 @Configuration
 public class GitConfig {
@@ -19,24 +19,24 @@ public class GitConfig {
     }
 
     /**
-     * 注册Git Servlet
+     * Register Git servlet.
      */
     @Bean
     public ServletRegistrationBean<GitServlet> gitServletRegistration() {
         GitServlet gitServlet = new GitServlet();
         
-        // 设置仓库解析器
+        // Set repository resolver.
         gitServlet.setRepositoryResolver(repositoryResolver);
         
-        // 启用接收包服务（push）
+        // Enable receive-pack (push).
         gitServlet.setReceivePackFactory((req, db) -> {
-            // 这里可以添加推送权限检查
+            // Add push authorization checks here if needed.
             return new org.eclipse.jgit.transport.ReceivePack(db);
         });
         
-        // 启用上传包服务（fetch/clone）
+        // Enable upload-pack (fetch/clone).
         gitServlet.setUploadPackFactory((req, db) -> {
-            // 这里可以添加拉取权限检查
+            // Add fetch authorization checks here if needed.
             return new org.eclipse.jgit.transport.UploadPack(db);
         });
 

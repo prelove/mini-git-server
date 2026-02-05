@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${repoName} + ' - ' + #{ui.repo.detail}">仓库详情 - Mini Git Server</title>
+    <title th:text="${repoName} + ' - ' + #{ui.repo.detail}">Repository Details - Mini Git Server</title>
     <style>
         * {
             margin: 0;
@@ -276,7 +276,7 @@
     </style>
     <script>
         function switchTab(tabName) {
-            // 隐藏所有标签内容
+            // Hide all tab content.
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
@@ -284,7 +284,7 @@
                 tab.classList.remove('active');
             });
             
-            // 显示选中的标签内容
+            // Show selected tab content.
             document.getElementById(tabName + '-content').classList.add('active');
             document.querySelector('[onclick="switchTab(\'' + tabName + '\')"]').classList.add('active');
         }
@@ -296,7 +296,7 @@
             window.location.href = currentUrl.toString();
         }
         
-        // 页面加载完成后默认显示第一个标签
+        // Show the first tab after page load.
         window.onload = function() {
             const firstTab = document.querySelector('.tab');
             if (firstTab) {
@@ -312,124 +312,124 @@
                 <h1 th:text="#{ui.title}">🔧 Mini Git Server</h1>
             </div>
             <div>
-                <a href="/admin" style="color: white; text-decoration: none;" th:text="'← ' + #{ui.back}">← 返回管理后台</a>
+                <a href="/admin" style="color: white; text-decoration: none;" th:text="'← ' + #{ui.back}">← Back to Admin</a>
             </div>
         </div>
     </header>
     
     <div class="container">
-        <!-- 调试信息 -->
+        <!-- Debug info -->
         <div class="debug-info">
-            <h4>🔍 调试信息</h4>
-            <p>仓库状态: <span th:text="${isEmpty} ? '空仓库' : '有内容'">状态</span></p>
-            <p>分支数量: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
-            <p>提交数量: <span th:text="${commits != null ? commits.size() : 0}">0</span></p>
-            <p>文件数量: <span th:text="${files != null ? files.size() : 0}">0</span></p>
-            <a th:href="${debugUrl}" target="_blank" class="btn btn-small">查看详细调试信息</a>
-            <a th:href="'?debug=true'" class="btn btn-small">启用调试模式</a>
+            <h4>🔍 Debug Info</h4>
+            <p>Repository status: <span th:text="${isEmpty} ? 'Empty' : 'Has content'">Status</span></p>
+            <p>Branch count: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
+            <p>Commit count: <span th:text="${commits != null ? commits.size() : 0}">0</span></p>
+            <p>File count: <span th:text="${files != null ? files.size() : 0}">0</span></p>
+            <a th:href="${debugUrl}" target="_blank" class="btn btn-small">View debug details</a>
+            <a th:href="'?debug=true'" class="btn btn-small">Enable debug mode</a>
         </div>
         
         <div class="card">
-            <h2>📚 <span th:text="#{ui.repo.detail}">仓库详情</span></h2>
+            <h2>📚 <span th:text="#{ui.repo.detail}">Repository Details</span></h2>
             
             <div class="info-grid">
-                <div class="info-label" th:text="#{ui.repo.name} + ':'">仓库名称:</div>
+                <div class="info-label" th:text="#{ui.repo.name} + ':'">Repository name:</div>
                 <div class="info-value" th:text="${repoName}">repository.git</div>
                 
-                <div class="info-label" th:text="#{ui.storage.path} + ':'">存储路径:</div>
+                <div class="info-label" th:text="#{ui.storage.path} + ':'">Storage path:</div>
                 <div class="info-value" th:text="${repoPath}">/path/to/repo</div>
                 
-                <div class="info-label" th:text="#{ui.repo.size} + ':'">仓库大小:</div>
+                <div class="info-label" th:text="#{ui.repo.size} + ':'">Repository size:</div>
                 <div class="info-value" th:text="${#numbers.formatDecimal(repoSize / 1024.0, 1, 1)} + ' KB'">0 KB</div>
             </div>
             
-            <h3 th:text="#{ui.clone.url}">克隆地址</h3>
+            <h3 th:text="#{ui.clone.url}">Clone URL</h3>
             <div class="clone-url" th:text="${cloneUrl}">http://localhost:8080/git/repository.git</div>
         </div>
         
-        <!-- Git错误提示 -->
+        <!-- Git error notice -->
         <div th:if="${gitError}" class="alert alert-warning">
-            <strong>Git错误:</strong> <span th:text="${gitError}"></span>
+            <strong>Git error:</strong> <span th:text="${gitError}"></span>
             <div th:if="${gitErrorDetail}" style="margin-top: 0.5rem; font-size: 0.9rem;">
-                详细信息: <span th:text="${gitErrorDetail}"></span>
+                Details: <span th:text="${gitErrorDetail}"></span>
             </div>
         </div>
 
-        <!-- 操作反馈 -->
+        <!-- Operation feedback -->
         <div th:if="${success}" class="alert alert-info" th:text="${success}"></div>
         <div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
 
-        <!-- 空仓库提示 -->
+        <!-- Empty repository notice -->
         <div th:if="${isEmpty}" class="card">
             <div class="empty-repo">
-                <h3>📝 这是一个空仓库</h3>
-                <p>仓库已创建，但还没有任何提交。你可以通过以下方式添加内容：</p>
+                <h3>📝 This repository is empty</h3>
+                <p>The repository exists but has no commits. Add content using the steps below:</p>
                 
-                <h4>🚀 快速开始</h4>
+                <h4>🚀 Quick start</h4>
                 <pre th:text="'echo &quot;# ' + ${repoName} + '&quot; >> README.md
 git init
 git add README.md
 git commit -m &quot;first commit&quot;
 git branch -M main
 git remote add origin ' + ${cloneUrl} + '
-git push -u origin main'">命令示例</pre>
+git push -u origin main'">Command example</pre>
                 
-                <h4>📤 推送现有仓库</h4>
+                <h4>📤 Push an existing repository</h4>
                 <pre th:text="'git remote add origin ' + ${cloneUrl} + '
 git branch -M main
-git push -u origin main'">推送命令</pre>
+git push -u origin main'">Push commands</pre>
             </div>
         </div>
         
-        <!-- Git内容（非空仓库） -->
+        <!-- Git content (non-empty) -->
             <div th:unless="${isEmpty}" class="card">
-            <!-- 分支选择器 -->
+            <!-- Branch selector -->
             <div th:if="${branches != null and !branches.empty}" class="branch-selector">
-                <span>🌿 分支:</span>
+                <span>🌿 Branch:</span>
                 <select id="branchSelect" onchange="switchBranch()" th:value="${currentBranch}">
                     <option th:each="branch : ${branches}"
                             th:value="${branch.shortName}"
-                            th:text="${branch.shortName + (branch.default ? ' (默认)' : '')}"
+                            th:text="${branch.shortName + (branch.default ? ' (Default)' : '')}"
                             th:selected="${branch.shortName == currentBranch}">
                         main
                     </option>
                 </select>
-                <span th:if="${branches.size() > 0}" th:text="'共 ' + ${branches.size()} + ' 个分支'">共 1 个分支</span>
+                <span th:if="${branches.size() > 0}" th:text="${branches.size()} + ' branches total'">1 branch total</span>
                 <form th:action="@{|/admin/repo/${repoName}/branch|}" method="post" style="display:flex; gap:0.5rem; align-items:center;">
                     <input type="hidden" name="fromBranch" th:value="${currentBranch}" />
-                    <input type="text" name="newBranch" placeholder="新分支名称" style="padding:0.3rem;" />
-                    <button type="submit" class="btn btn-small">新增分支</button>
+                    <input type="text" name="newBranch" placeholder="New branch name" style="padding:0.3rem;" />
+                    <button type="submit" class="btn btn-small">Create branch</button>
                 </form>
             </div>
 
-            <!-- 状态信息 -->
+            <!-- Status info -->
             <div class="alert alert-info" th:if="${currentBranch}">
-                当前分支: <strong th:text="${currentBranch}">master</strong> |
-                提交数: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
-                文件数: <strong th:text="${files != null ? files.size() : 0}">0</strong>
+                Current branch: <strong th:text="${currentBranch}">master</strong> |
+                Commits: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
+                Files: <strong th:text="${files != null ? files.size() : 0}">0</strong>
             </div>
             
-            <!-- 标签导航 -->
+            <!-- Tab navigation -->
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('files')">📁 文件</button>
-                <button class="tab" onclick="switchTab('commits')">📋 提交历史</button>
-                <button class="tab" onclick="switchTab('branches')">🌿 分支</button>
+                <button class="tab active" onclick="switchTab('files')">📁 Files</button>
+                <button class="tab" onclick="switchTab('commits')">📋 Commits</button>
+                <button class="tab" onclick="switchTab('branches')">🌿 Branches</button>
             </div>
             
-            <!-- 文件列表标签 -->
+            <!-- Files tab -->
             <div id="files-content" class="tab-content active">
                 <div class="breadcrumbs" th:if="${breadcrumbs != null}">
                     <span th:each="crumb,iter : ${breadcrumbs}">
                         <span th:if="${iter.index > 0}"> / </span>
                         <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${crumb.path != '' ? '&path=' + crumb.path : ''}|}"
-                           th:text="${iter.index == 0 ? '根目录' : crumb.name}"></a>
+                           th:text="${iter.index == 0 ? 'root' : crumb.name}"></a>
                     </span>
                 </div>
                 <div th:if="${files != null and !files.empty}" class="file-list">
                     <div class="file-header">
-                        <div>文件名</div>
-                        <div>大小</div>
-                        <div>类型</div>
+                        <div>Name</div>
+                        <div>Size</div>
+                        <div>Type</div>
                     </div>
                     <div th:if="${currentPath != ''}" class="file-item">
                         <div class="file-name">
@@ -437,7 +437,7 @@ git push -u origin main'">推送命令</pre>
                             <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${parentPath != '' ? '&path=' + parentPath : ''}|}">..</a>
                         </div>
                         <div>-</div>
-                        <div>目录</div>
+                        <div>Directory</div>
                     </div>
                     <div th:each="file : ${files}" class="file-item">
                         <div class="file-name">
@@ -448,29 +448,29 @@ git push -u origin main'">推送命令</pre>
                                target="_blank"
                                rel="noopener"
                                class="file-link"
-                               th:title="${'预览 ' + file.name}"
+                               th:title="${'Preview ' + file.name}"
                                th:text="${file.name}"></a>
                         </div>
                         <div th:text="${file.sizeFormatted}">1.2 KB</div>
-                        <div th:text="${file.type == 'directory' ? '目录' : '文件'}">文件</div>
+                        <div th:text="${file.type == 'directory' ? 'Directory' : 'File'}">File</div>
                     </div>
                 </div>
                 <div th:if="${files == null or files.empty}" style="text-align: center; padding: 2rem; color: #666;">
-                    📂 此目录为空或分支无内容
+                    📂 This directory is empty or the branch has no content.
                     <div style="margin-top: 1rem; font-size: 0.9rem;" th:if="${currentBranch}">
-                        当前分支: <span th:text="${currentBranch}">branch</span>
+                        Current branch: <span th:text="${currentBranch}">branch</span>
                     </div>
                 </div>
             </div>
             
-            <!-- 提交历史标签 -->
+            <!-- Commits tab -->
             <div id="commits-content" class="tab-content">
                 <div th:if="${commits != null and !commits.empty}" class="commit-list">
                     <div th:each="commit : ${commits}" class="commit-item">
                         <div class="commit-info">
                             <div class="commit-message" th:text="${commit.message}">Initial commit</div>
                             <div class="commit-meta">
-                                <span th:text="${commit.author}">作者</span> · 
+                                <span th:text="${commit.author}">Author</span> · 
                                 <span th:text="${commit.dateFormatted}">2025-08-29 12:00:00</span>
                             </div>
                         </div>
@@ -478,37 +478,37 @@ git push -u origin main'">推送命令</pre>
                     </div>
                 </div>
                 <div th:if="${commits == null or commits.empty}" style="text-align: center; padding: 2rem; color: #666;">
-                    📋 暂无提交记录
+                    📋 No commits yet
                     <div style="margin-top: 1rem; font-size: 0.9rem;">
-                        分支: <span th:text="${currentBranch ?: '未知'}">branch</span>
+                        Branch: <span th:text="${currentBranch ?: 'Unknown'}">branch</span>
                     </div>
                 </div>
             </div>
             
-            <!-- 分支列表标签 -->
+            <!-- Branches tab -->
             <div id="branches-content" class="tab-content">
                 <div th:if="${branches != null and !branches.empty}" class="commit-list">
                     <div th:each="branch : ${branches}" class="commit-item">
                         <div class="commit-info">
                             <div class="commit-message">
                                 🌿 <span th:text="${branch.shortName}">main</span>
-                                <span th:if="${branch.default}" style="color: #27ae60; font-size: 0.8rem;">(默认)</span>
+                                <span th:if="${branch.default}" style="color: #27ae60; font-size: 0.8rem;">(Default)</span>
                             </div>
                             <div class="commit-meta" th:if="${branch.lastCommitMessage}">
-                                最后提交: <span th:text="${branch.lastCommitMessage}">commit message</span>
+                                Last commit: <span th:text="${branch.lastCommitMessage}">commit message</span>
                             </div>
                         </div>
                         <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
                     </div>
                 </div>
                 <div th:if="${branches == null or branches.empty}" style="text-align: center; padding: 2rem; color: #666;">
-                    🌿 暂无分支
+                    🌿 No branches yet
                 </div>
             </div>
         </div>
         
         <div>
-            <a href="/admin" class="btn btn-secondary" th:text="#{ui.back}">返回列表</a>
+            <a href="/admin" class="btn btn-secondary" th:text="#{ui.back}">Back to list</a>
         </div>
     </div>
 </body>

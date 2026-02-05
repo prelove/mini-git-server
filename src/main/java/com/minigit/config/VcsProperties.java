@@ -4,24 +4,24 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * VCS配置属性
+ * VCS configuration properties.
  */
 @Component
 @ConfigurationProperties(prefix = "vcs")
 public class VcsProperties {
 
     /**
-     * 存储配置
+     * Storage configuration.
      */
     private Storage storage = new Storage();
 
     /**
-     * 认证配置
+     * Authentication configuration.
      */
     private Auth auth = new Auth();
 
     /**
-     * 语言配置
+     * Locale configuration.
      */
     private Lang lang = new Lang();
 
@@ -51,7 +51,7 @@ public class VcsProperties {
 
     public static class Storage {
         /**
-         * 仓库存储目录，默认为 ./data/repos
+         * Repository storage directory, defaults to ./data/repos.
          */
         private String dir = "./data/repos";
 
@@ -66,12 +66,12 @@ public class VcsProperties {
 
     public static class Auth {
         /**
-         * 默认用户名
+         * Default username.
          */
         private String user = "admin";
 
         /**
-         * 默认密码
+         * Default password.
          */
         private String pass = "admin123";
 
@@ -94,7 +94,7 @@ public class VcsProperties {
 
     public static class Lang {
         /**
-         * 默认语言，支持 en/zh/ja
+         * Default language, supports en/ja.
          */
         private String defaultLang = "en";
 
