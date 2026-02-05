@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 健康检查控制器
+ * Health check controller.
  */
 @Controller
 @RequestMapping("/actuator")
@@ -33,7 +33,7 @@ public class HealthController {
     }
 
     /**
-     * 健康检查 - 根据Accept头决定返回HTML还是JSON
+     * Health check - return HTML or JSON based on Accept header.
      */
     @GetMapping("/health")
     public String healthPage(
@@ -41,7 +41,7 @@ public class HealthController {
             @RequestParam(value = "format", required = false) String format,
             Model model) {
         
-        // 如果明确要求JSON格式，或者Accept头包含application/json但不包含text/html
+        // If JSON is explicitly requested, or Accept contains application/json but not text/html.
         String acceptHeader = request.getHeader("Accept");
         boolean preferJson = "json".equals(format) || 
                              (acceptHeader != null && 
@@ -49,18 +49,18 @@ public class HealthController {
                               !acceptHeader.contains("text/html"));
         
         if (preferJson) {
-            // 重定向到JSON端点
+            // Redirect to JSON endpoint.
             return "redirect:/actuator/health/json";
         }
         
-        // 返回HTML页面
+        // Return HTML page.
         Health health = vcsHealthIndicator.health();
         
-        // 获取系统健康状态
+        // Get system health status.
         String overallStatus = health.getStatus().getCode();
         Map<String, Object> details = health.getDetails();
         
-        // 解析详细信息
+        // Parse detail info.
         Map<String, Object> vcsDetails = (Map<String, Object>) details.get("vcs");
         Map<String, Object> diskDetails = (Map<String, Object>) details.get("diskSpace");
         Map<String, Object> pingDetails = (Map<String, Object>) details.get("ping");
@@ -68,7 +68,7 @@ public class HealthController {
         model.addAttribute("overallStatus", overallStatus);
         model.addAttribute("checkTime", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         
-        // VCS信息
+        // VCS info.
         if (vcsDetails != null) {
             model.addAttribute("vcsStatus", "UP");
             model.addAttribute("storageDir", vcsDetails.get("storage"));
@@ -78,7 +78,7 @@ public class HealthController {
             model.addAttribute("vcsStatus", "DOWN");
         }
         
-        // 磁盘信息
+        // Disk info.
         if (diskDetails != null && diskDetails.get("details") != null) {
             Map<String, Object> diskDetailInfo = (Map<String, Object>) diskDetails.get("details");
             long totalSpace = ((Number) diskDetailInfo.get("total")).longValue();
@@ -92,7 +92,7 @@ public class HealthController {
             model.addAttribute("usagePercent", Math.round((double) usedSpace / totalSpace * 100));
         }
         
-        // 网络状态
+        // Network status.
         if (pingDetails != null) {
             model.addAttribute("pingStatus", pingDetails.get("status"));
         }
@@ -101,7 +101,7 @@ public class HealthController {
     }
 
     /**
-     * JSON格式的健康检查（明确的JSON端点）
+     * Health check in JSON format (explicit JSON endpoint).
      */
     @GetMapping(value = "/health/json", produces = "application/json")
     @ResponseBody
@@ -117,7 +117,7 @@ public class HealthController {
     }
 
     /**
-     * 格式化字节大小
+     * Format byte size.
      */
     private String formatBytes(long bytes) {
         if (bytes < 1024) {
@@ -133,7 +133,7 @@ public class HealthController {
 }
 
 /**
- * VCS健康指示器
+ * VCS health indicator.
  */
 @Component
 class VcsHealthIndicator implements HealthIndicator {
@@ -147,7 +147,7 @@ class VcsHealthIndicator implements HealthIndicator {
     @Override
     public Health health() {
         try {
-            // 检查存储目录是否可访问
+            // Check whether the storage directory is accessible.
             File storageDir = ((com.minigit.service.impl.RepositoryServiceImpl) repositoryService).getStorageDir();
             
             if (!storageDir.exists() || !storageDir.canRead() || !storageDir.canWrite()) {
@@ -156,7 +156,7 @@ class VcsHealthIndicator implements HealthIndicator {
                     .build();
             }
 
-            // 统计仓库数量
+            // Count repositories.
             int repoCount = repositoryService.listRepositories().size();
             
             return Health.up()

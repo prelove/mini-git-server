@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系统信息 - Mini Git Server</title>
+    <title>System Information - Mini Git Server</title>
     <style>
         * {
             margin: 0;
@@ -104,57 +104,57 @@
     
     <nav class="nav">
         <div class="nav-content">
-            <a href="/admin">仓库管理</a>
-            <a href="/admin/system" class="active">系统信息</a>
-            <a href="/actuator/health">系统健康</a>
+            <a href="/admin">Repositories</a>
+            <a href="/admin/system" class="active">System Info</a>
+            <a href="/actuator/health">Health Check</a>
         </div>
     </nav>
     
     <div class="container">
         <div class="card">
-            <h2>💻 系统信息</h2>
+            <h2>💻 System Information</h2>
             <div class="info-grid">
-                <div class="info-label">Java 版本:</div>
+                <div class="info-label">Java version:</div>
                 <div class="info-value" th:text="${javaVersion}">1.8.0</div>
                 
-                <div class="info-label">操作系统:</div>
+                <div class="info-label">Operating system:</div>
                 <div class="info-value" th:text="${osName + ' ' + osVersion}">Windows 10</div>
                 
-                <div class="info-label">应用版本:</div>
+                <div class="info-label">Application version:</div>
                 <div class="info-value">Mini Git Server 1.0.0</div>
             </div>
         </div>
         
         <div class="card">
-            <h2>💾 内存使用情况</h2>
+            <h2>💾 Memory Usage</h2>
             <div class="info-grid">
-                <div class="info-label">最大内存:</div>
+                <div class="info-label">Max memory:</div>
                 <div class="info-value" th:text="${maxMemory}">512 MB</div>
                 
-                <div class="info-label">总内存:</div>
+                <div class="info-label">Total memory:</div>
                 <div class="info-value" th:text="${totalMemory}">256 MB</div>
                 
-                <div class="info-label">已用内存:</div>
+                <div class="info-label">Used memory:</div>
                 <div class="info-value" th:text="${usedMemory}">128 MB</div>
                 
-                <div class="info-label">可用内存:</div>
+                <div class="info-label">Free memory:</div>
                 <div class="info-value" th:text="${freeMemory}">128 MB</div>
             </div>
         </div>
         
         <div class="card">
-            <h2>💿 存储空间</h2>
+            <h2>💿 Storage Space</h2>
             <div class="info-grid">
-                <div class="info-label">存储目录:</div>
+                <div class="info-label">Storage directory:</div>
                 <div class="info-value" th:text="${storageDir}">/path/to/repos</div>
                 
-                <div class="info-label">总空间:</div>
+                <div class="info-label">Total space:</div>
                 <div class="info-value" th:text="${totalSpace}">100 GB</div>
                 
-                <div class="info-label">已用空间:</div>
+                <div class="info-label">Used space:</div>
                 <div class="info-value" th:text="${usedSpace}">50 GB</div>
                 
-                <div class="info-label">可用空间:</div>
+                <div class="info-label">Free space:</div>
                 <div class="info-value" th:text="${freeSpace}">50 GB</div>
             </div>
         </div>

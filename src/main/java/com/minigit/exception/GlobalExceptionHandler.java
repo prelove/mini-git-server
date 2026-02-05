@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.Locale;
 
 /**
- * 全局异常处理器
+ * Global exception handler.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理参数缺失异常
+     * Handle missing parameter exceptions.
      */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException e) {
@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理非法参数异常
+     * Handle invalid parameter exceptions.
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException e) {
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理认证异常
+     * Handle authentication exceptions.
      */
     @ExceptionHandler({BadCredentialsException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> handleAuthException(Exception e) {
@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理通用异常
+     * Handle generic exceptions.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception e) {
@@ -82,7 +82,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 获取国际化消息
+     * Get localized message.
      */
     private String getMessage(String key, Object... args) {
         Locale locale = LocaleContextHolder.getLocale();

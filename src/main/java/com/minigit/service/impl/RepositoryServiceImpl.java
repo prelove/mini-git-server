@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * 仓库服务实现
+ * Repository service implementation.
  */
 @Service
 public class RepositoryServiceImpl implements RepositoryService {
@@ -29,7 +29,7 @@ public class RepositoryServiceImpl implements RepositoryService {
     private final VcsProperties vcsProperties;
     private File storageDir;
 
-    // 仓库名称验证正则表达式：只允许字母、数字、下划线、中划线
+    // Repository name validation regex: letters, numbers, underscores, and hyphens only.
     private static final Pattern REPO_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
 
     public RepositoryServiceImpl(VcsProperties vcsProperties) {
@@ -41,7 +41,7 @@ public class RepositoryServiceImpl implements RepositoryService {
         String storagePath = vcsProperties.getStorage().getDir();
         this.storageDir = new File(storagePath);
         
-        // 确保存储目录存在
+        // Ensure storage directory exists.
         if (!storageDir.exists()) {
             boolean created = storageDir.mkdirs();
             if (created) {
@@ -70,10 +70,10 @@ public class RepositoryServiceImpl implements RepositoryService {
         }
 
         try {
-            // 使用JGit创建裸仓库
+            // Create a bare repository with JGit.
             InitCommand initCommand = Git.init();
             initCommand.setDirectory(repoDir);
-            initCommand.setBare(true); // 创建裸仓库
+            initCommand.setBare(true); // Create a bare repository.
             
             Git git = initCommand.call();
             git.close();
@@ -127,18 +127,18 @@ public class RepositoryServiceImpl implements RepositoryService {
             return false;
         }
         
-        // 移除.git后缀进行验证
+        // Remove .git suffix before validation.
         String nameToValidate = name;
         if (name.endsWith(".git")) {
             nameToValidate = name.substring(0, name.length() - 4);
         }
         
-        // 检查是否包含危险字符
+        // Check for unsafe characters.
         if (nameToValidate.contains("..") || nameToValidate.contains("/") || nameToValidate.contains("\\")) {
             return false;
         }
         
-        // 检查是否符合命名规范
+        // Check naming rules.
         return REPO_NAME_PATTERN.matcher(nameToValidate).matches();
     }
 
@@ -150,7 +150,7 @@ public class RepositoryServiceImpl implements RepositoryService {
         
         String normalized = name.trim();
         
-        // 如果没有.git后缀，自动添加
+        // Add .git suffix when missing.
         if (!normalized.endsWith(".git")) {
             normalized += ".git";
         }
@@ -159,7 +159,7 @@ public class RepositoryServiceImpl implements RepositoryService {
     }
 
     /**
-     * 获取存储目录
+     * Get storage directory.
      */
     public File getStorageDir() {
         return storageDir;

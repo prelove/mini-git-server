@@ -1,58 +1,58 @@
 # Mini Git Server
 
-一个轻量级的 Git 服务器，支持 Git Smart HTTP 协议，基于 Java 8 + Spring Boot + JGit 构建。
+A lightweight Git server that supports the Git Smart HTTP protocol, built with Java 8, Spring Boot, and JGit.
 
 [![Java Version](https://img.shields.io/badge/Java-1.8+-blue.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7.18-green.svg)](https://spring.io/projects/spring-boot)
 [![JGit](https://img.shields.io/badge/JGit-5.13.3-orange.svg)](https://www.eclipse.org/jgit/)
 
-## 🎯 特性
+## 🎯 Features
 
-* ✅ **Git Smart HTTP 协议**：完全兼容标准 Git 客户端（包括 Eclipse EGit）
-* ✅ **RESTful API**：简单的仓库管理接口
-* ✅ **多语言支持**：中文 / 英文 / 日文国际化
-* ✅ **HTTP Basic 认证**：简单可靠的身份验证
-* ✅ **单文件部署**：打包为可执行 JAR，一键启动
-* ✅ **操作审计**：详细的 Git 操作日志记录
-* ✅ **健康检查**：监控服务状态
-* ✅ **内置命令行客户端（mgit）**：无需安装原生 `git.exe` 即可进行常用操作（init/clone/status/add/commit/log/branch/checkout/push/pull/remote）
+* ✅ **Git Smart HTTP**: Fully compatible with standard Git clients (including Eclipse EGit)
+* ✅ **RESTful API**: Simple repository management endpoints
+* ✅ **Localization**: English / Japanese UI and messages
+* ✅ **HTTP Basic Auth**: Simple and reliable authentication
+* ✅ **Single-jar deployment**: Package as an executable JAR and run
+* ✅ **Audit logging**: Detailed Git access logs
+* ✅ **Health check**: Service health monitoring
+* ✅ **Built-in CLI client (mgit)**: Common Git operations without native `git.exe` (init/clone/status/add/commit/log/branch/checkout/push/pull/remote)
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 环境要求
+### Requirements
 
-* Java 8 或更高版本
-* Maven 3.6+（仅编译时需要）
+* Java 8 or later
+* Maven 3.6+ (build time only)
 
-### 编译构建
+### Build
 
 ```bash
-# 克隆项目
-git clone <项目地址>
+# Clone the repository
+git clone <repo-url>
 cd mini-git-server
 
-# 编译打包（同时产出 server 与 client 两个可执行 JAR）
+# Build (server + client executable JARs)
 mvn clean package -DskipTests
 ```
 
-**生成的 JAR 文件：**
+**Generated JARs:**
 
-* 服务端：`target/mini-git-server-1.0.0.jar`
-* 命令行客户端（mgit）：`target/mini-git-server-1.0.0-client.jar`
+* Server: `target/mini-git-server-1.0.0.jar`
+* CLI client (mgit): `target/mini-git-server-1.0.0-client.jar`
 
-> 说明：两个 JAR 都是 Spring Boot 可执行包；运行 `-client.jar` 时会启动你的 `com.minigit.util.GitClientMain` 作为入口。
+> Note: Both are Spring Boot executable JARs. Running `-client.jar` starts `com.minigit.util.GitClientMain`.
 
-### 启动服务
+### Run the server
 
-#### 基本启动
+#### Basic
 
 ```bash
 java -jar target/mini-git-server-1.0.0.jar
 ```
 
-#### 自定义配置启动
+#### Custom configuration
 
 ```bash
 java -jar target/mini-git-server-1.0.0.jar \
@@ -60,10 +60,10 @@ java -jar target/mini-git-server-1.0.0.jar \
   --vcs.storage.dir="/opt/git-repos" \
   --vcs.auth.user=admin \
   --vcs.auth.pass=mypassword \
-  --vcs.lang.default=zh
+  --vcs.lang.default=en
 ```
 
-### 服务验证
+### Verify service
 
 ```bash
 curl http://localhost:8080/actuator/health
@@ -71,348 +71,323 @@ curl http://localhost:8080/actuator/health
 
 ---
 
-## 📚 使用指南
+## 📚 Usage Guide
 
 ### REST API
 
-#### 1. 创建仓库
+#### 1. Create repository
 
 ```bash
-# 中文环境
-curl -u admin:admin123 -H "Accept-Language: zh" -X POST \
+# English locale
+curl -u admin:admin123 -H "Accept-Language: en" -X POST \
   "http://localhost:8080/api/repos?name=my-project"
 
-# 响应示例
+# Response
 {
   "name": "my-project.git"
 }
 ```
 
-#### 2. 列出仓库
+#### 2. List repositories
 
 ```bash
 curl -u admin:admin123 "http://localhost:8080/api/repos"
 
-# 响应示例
+# Response
 [
   "my-project.git",
   "docs.git"
 ]
 ```
 
-#### 3. 错误响应格式
+#### 3. Error response format
 
 ```json
 {
   "error": "REPO_ALREADY_EXISTS",
-  "message": "仓库已存在: my-project.git",
+  "message": "Repository already exists: my-project.git",
   "timestamp": "2025-08-29T02:19:31Z"
 }
 ```
 
-### Git 操作
+### Git operations
 
-#### Eclipse EGit 使用
+#### Eclipse EGit
 
-1. **克隆仓库**
+1. **Clone repository**
 
-    * 在 Eclipse 中选择 `File` → `Import` → `Git` → `Projects from Git`
-    * 选择 `Clone URI`
-    * 输入 URI：`http://localhost:8080/git/my-project.git`
-    * 输入认证信息：`admin` / `admin123`
+    * In Eclipse: `File` → `Import` → `Git` → `Projects from Git`
+    * Choose `Clone URI`
+    * Enter URI: `http://localhost:8080/git/my-project.git`
+    * Credentials: `admin` / `admin123`
 
-2. **推送代码**
+2. **Push code**
 
-    * 右键项目 → `Team` → `Push Branch`
-    * 首次推送时会要求设置上游分支
+    * Right-click project → `Team` → `Push Branch`
+    * Set upstream branch on first push
 
-#### 命令行使用（原生 git 示例）
+#### CLI usage (native Git example)
 
 ```bash
-# 克隆仓库（带凭证）
+# Clone with credentials
 git clone http://admin:admin123@localhost:8080/git/my-project.git
 
-# 或者分步操作（会提示输入密码）
+# Or step-by-step (will prompt for password)
 git clone http://localhost:8080/git/my-project.git
+
+# Add and commit
 cd my-project
+# ... edit files
+# Commit
 
-# 添加文件并提交
-echo "# My Project" > README.md
-git add README.md
-git commit -m "Initial commit"
+git add .
+git commit -m "init"
 
-# 推送到远程
+# Push
 git push origin main
 ```
 
 ---
 
-## 🧰 命令行客户端（mgit）
+## 🧰 CLI client (mgit)
 
-> 适用于 **无法安装原生 git** 的场景。客户端内置于本项目，构建后可直接运行 `-client.jar` 完成常用 Git 操作。
+> Designed for environments where native Git is unavailable. The client is built into this project; after building, run the `-client.jar` to perform common Git operations.
 
-### 启动与帮助
-
-```bash
-# Windows / macOS / Linux 通用
-java -jar target/mini-git-server-1.0.0-client.jar help
-```
-
-### 命令一览（与原生 git 的映射）
-
-| mgit 命令    | 语法                                                               | 对应原生 git                  |
-| ---------- | ---------------------------------------------------------------- | ------------------------- |
-| `init`     | `init <path>`                                                    | `git init`                |
-| `clone`    | `clone <url> <dir> [--user U --pass P]`                          | `git clone`               |
-| `status`   | `status <repoPath>`                                              | `git status`              |
-| `add`      | `add <repoPath> <path1> [path2 ...]`                             | `git add`                 |
-| `commit`   | `commit <repoPath> -m "message"`                                 | `git commit -m`           |
-| `log`      | `log <repoPath> [--max N]`                                       | `git log`                 |
-| `branch`   | `branch <repoPath>`（列出） / `branch -c <repoPath> <newBranch>`（创建） | `git branch`              |
-| `checkout` | `checkout <repoPath> <branchOrCommit>`                           | `git checkout/switch`     |
-| `remote`   | `remote -v <repoPath>`                                           | `git remote -v`           |
-| `push`     | `push <repoPath> <remote> <ref> [--user U --pass P]`             | `git push <remote> <ref>` |
-| `pull`     | `pull <repoPath> <remote> <ref> [--user U --pass P]`             | `git pull`（fetch+merge）   |
-
-> 说明：当前 `mgit` 的命令形式以 `<repoPath>` 显式传入仓库路径（不使用全局 `-C` 参数）。
-
-### 常见工作流示例
+### Start & help
 
 ```bash
-# 1) 初始化与首次提交
-java -jar target/mini-git-server-1.0.0-client.jar init D:\repos\demo
-echo hello > D:\repos\demo\README.md
-java -jar target/mini-git-server-1.0.0-client.jar add D:\repos\demo README.md
-java -jar target/mini-git-server-1.0.0-client.jar commit D:\repos\demo -m "first commit"
-
-# 2) 配置远端（用原生 git 或手工编辑 .git/config）
-cd /d D:\repos\demo
-git config remote.origin.url http://localhost:8080/git/demo.git
-
-# 3) 推送 / 拉取（支持 HTTP Basic）
-
-# 方式 A：命令行显式用户名/密码（演示用途，生产不建议留历史）
-java -jar target\mini-git-server-1.0.0-client.jar push D:\repos\demo origin master --user alice --pass 123456
-
-# 方式 B：环境变量（推荐）
-# Windows CMD:
-set GIT_USER=alice
-set GIT_PASSWORD=123456
-# PowerShell:
-$env:GIT_USER="alice"; $env:GIT_PASSWORD="123456"
-# macOS/Linux:
-export GIT_USER=alice; export GIT_PASSWORD=123456
-
-java -jar target\mini-git-server-1.0.0-client.jar push D:\repos\demo origin master
-java -jar target\mini-git-server-1.0.0-client.jar pull D:\repos\demo origin master
+# Windows / macOS / Linux
+java -jar target/mini-git-server-1.0.0-client.jar --help
 ```
 
-### 认证解析优先级
+### Command mapping
 
-1. `--user/--pass`
-2. 环境变量 `GIT_USER` / `GIT_PASSWORD`
-3. 控制台交互输入（若前两者都未提供且控制台可用）
+| mgit command | Syntax | Native Git |
+| --- | --- | --- |
+| `init` | `init <repoPath>` | `git init` |
+| `clone` | `clone <url> <dir> [--user U --pass P]` | `git clone` |
+| `status` | `status <repoPath>` | `git status` |
+| `add` | `add <repoPath> <pathspec>` | `git add` |
+| `commit` | `commit <repoPath> -m "msg"` | `git commit` |
+| `log` | `log <repoPath> [--max N]` | `git log` |
+| `branch` | `branch <repoPath>` / `branch -c <repoPath> <newBranch>` | `git branch` |
+| `checkout` | `checkout <repoPath> <branch>` | `git checkout` |
+| `remote` | `remote <repoPath>` / `remote -a <repoPath> <name> <url>` | `git remote` |
+| `push` | `push <repoPath> <remote> <branch> [--user U --pass P]` | `git push` |
+| `pull` | `pull <repoPath> <remote> <branch> [--user U --pass P]` | `git pull` |
 
-### 故障排除（mgit）
+> Note: `mgit` explicitly passes `<repoPath>` instead of using the global `-C` flag.
 
-* **`Authentication failed`**：检查 `--user/--pass` 或环境变量是否正确；确认服务端账号密码与 URL。
-* **`Repository not found`**：先通过 REST API 创建仓库或确认远程地址无误。
-* **合并冲突**（`pull` 后状态为 `CONFLICTING` 等）：按提示在工作区解决冲突后，再次 `add/commit`。
+### Common workflow
+
+```bash
+# 1) Initialize and first commit
+java -jar target/mini-git-server-1.0.0-client.jar init ./demo
+cd demo
+# ... edit files
+java -jar target/mini-git-server-1.0.0-client.jar add . .
+java -jar target/mini-git-server-1.0.0-client.jar commit . -m "first commit"
+
+# 2) Configure remote (native Git or edit .git/config)
+# 3) Push / pull (HTTP Basic supported)
+
+# Option A: explicit credentials (demo only; avoid in production history)
+java -jar target/mini-git-server-1.0.0-client.jar push . origin main --user admin --pass admin123
+
+# Option B: environment variables (recommended)
+export GIT_USER=admin
+export GIT_PASSWORD=admin123
+java -jar target/mini-git-server-1.0.0-client.jar push . origin main
+```
+
+### Auth resolution priority
+
+1. CLI flags `--user` / `--pass`
+2. Environment variables `GIT_USER` / `GIT_PASSWORD`
+3. Interactive prompt (when console is available)
+
+### Troubleshooting (mgit)
+
+* **`Authentication failed`**: Verify `--user/--pass` or environment variables; confirm server credentials.
+* **`Repository not found`**: Create the repo via REST API or verify remote URL.
+* **Merge conflicts** (`pull` shows `CONFLICTING`): resolve in workspace, then `add/commit`.
 
 ---
 
-## ✅ 支持的 Git 操作清单
+## ✅ Supported Git operations
 
-* `git clone` - 克隆仓库
-* `git fetch` - 获取更新
-* `git pull` - 拉取并合并
-* `git push` - 推送提交
-* 分支操作
-* 标签操作
+* `git clone` - clone repository
+* `git fetch` - fetch updates
+* `git pull` - pull and merge
+* `git push` - push commits
+* Branch operations
+* Tag operations
 
 ---
 
-## ⚙️ 配置说明
+## ⚙️ Configuration
 
-### 配置文件参数（`application.properties`）
+### application.properties
 
 ```properties
-# 服务器端口
-server.port=8080
+# Server port
+server.port=8082
 
-# 仓库存储目录
+# Repository storage directory
 vcs.storage.dir=./data/repos
 
-# 认证信息
+# Credentials
 vcs.auth.user=admin
 vcs.auth.pass=admin123
 
-# 默认语言 (en/zh/ja)
+# Default language (en/ja)
 vcs.lang.default=en
 
-# 日志级别
+# Logging
 logging.level.com.minigit=INFO
 ```
 
-### 命令行参数覆盖
+### Command-line overrides
 
 ```bash
-java -jar mini-git-server-1.0.0.jar \
-  --server.port=9090 \
-  --vcs.storage.dir="D:\git-data" \
-  --vcs.auth.user=gitadmin \
-  --vcs.auth.pass=securepassword \
-  --logging.level.com.minigit=DEBUG
+java -jar target/mini-git-server-1.0.0.jar \
+  --server.port=8080 \
+  --vcs.storage.dir=/data/repos \
+  --vcs.auth.user=git \
+  --vcs.auth.pass=secret
 ```
 
 ---
 
-## 📁 目录结构
+## 📁 Directory structure
 
 ```
-./
-├── data/                    # 默认数据目录
-│   └── repos/              # Git 仓库存储目录
-│       ├── project1.git/   # 裸仓库1
-│       └── project2.git/   # 裸仓库2
-├── logs/                   # 日志目录
-│   ├── mini-git-server.log # 应用日志
-│   └── git-access.log      # Git 操作审计日志
+mini-git-server/
+├── data/                    # default data directory
+│   └── repos/               # Git repository storage
+│       ├── project1.git/    # bare repository 1
+│       └── project2.git/    # bare repository 2
+├── logs/                    # log directory
+│   ├── mini-git-server.log  # application log
+│   └── git-access.log       # Git access audit log
 └── target/
-    ├── mini-git-server-1.0.0.jar           # 服务端
-    └── mini-git-server-1.0.0-client.jar    # 命令行客户端（mgit）
+    ├── mini-git-server-1.0.0.jar           # server
+    └── mini-git-server-1.0.0-client.jar    # CLI client (mgit)
 ```
 
 ---
 
-## 🔒 安全注意事项
+## 🔒 Security notes
 
-### 默认配置安全风险
+### Default configuration risks
 
-⚠️ **生产环境必须修改默认密码！**
+⚠️ **Change the default password in production!**
 
 ```bash
-# 生产环境启动示例
-java -jar mini-git-server-1.0.0.jar \
-  --vcs.auth.user=mygituser \
-  --vcs.auth.pass=MyS3cur3P@ssw0rd \
-  --vcs.storage.dir=/secure/git/repos
+java -jar target/mini-git-server-1.0.0.jar \
+  --vcs.auth.user=git \
+  --vcs.auth.pass=change-me
 ```
 
-### 网络安全建议
+### Network security suggestions
 
-* 在生产环境中，建议在反向代理（如 Nginx）后运行
-* 启用 HTTPS 加密传输
-* 限制访问 IP 范围
-* 定期备份仓库数据
+* Run behind a reverse proxy (e.g., Nginx)
+* Enable HTTPS
+* Restrict allowed IP ranges
+* Back up repository data regularly
 
 ---
 
-## 📊 监控和日志
+## 📊 Monitoring & logs
 
-### 健康检查
+### Health check
 
 ```bash
-# 检查服务状态
 curl http://localhost:8080/actuator/health
-
-# 响应示例
-{
-  "status": "UP",
-  "details": {
-    "storage": "/path/to/repos",
-    "repositories": 3,
-    "version": "1.0.0"
-  }
-}
 ```
 
-### 日志文件
+### Log files
 
-* **应用日志**：`logs/mini-git-server.log`
-* **Git 访问日志**：`logs/git-access.log`
+* **Application log**: `logs/mini-git-server.log`
+* **Git access log**: `logs/git-access.log`
 
-### 日志示例
+### Log example
 
-```
-# Git 访问日志格式
-2025-08-29 10:30:15.123 - OPERATION=CLONE REPO=my-project.git USER=admin IP=192.168.1.100 SUCCESS=true DURATION=234ms USER_AGENT=git/2.34.1
+```text
+[2025-08-29 10:43:27] git-upload-pack: /git/my-project.git, user=admin, ip=127.0.0.1
 ```
 
 ---
 
-## 🔧 故障排除
+## 🔧 Troubleshooting
 
-### 常见问题
+### 1) Port already in use
 
-#### 1) 端口被占用
+**Error**
 
-```bash
-# 错误信息
-Port 8080 was already in use
-
-# 解决方案
-java -jar mini-git-server-1.0.0.jar --server.port=8090
+```
+Port 8080 was already in use.
 ```
 
-#### 2) 权限问题
+**Fix**
 
-```bash
-# 错误信息
-Cannot create storage directory
+* Change `server.port` or stop the process using the port.
 
-# 解决方案 - 确保目录权限
-mkdir -p /opt/git-repos
-chown -R $(whoami) /opt/git-repos
-java -jar mini-git-server-1.0.0.jar --vcs.storage.dir=/opt/git-repos
+### 2) Permission issues
+
+**Error**
+
+```
+Permission denied: ./data/repos
 ```
 
-#### 3) Git 克隆失败
+**Fix**
 
-```bash
-# 错误信息
-fatal: Authentication failed
+* Ensure the directory is writable by the current user.
 
-# 解决方案 - 检查认证信息
-git clone http://admin:admin123@localhost:8080/git/repo-name.git
+### 3) Git clone fails
+
+**Error**
+
+```
+Authentication failed for 'http://localhost:8080/git/my-project.git/'
 ```
 
-#### 4) 仓库不存在
+**Fix**
 
-```bash
-# 错误信息
-Repository not found
+* Check credentials and server configuration.
 
-# 解决方案 - 先创建仓库
-curl -u admin:admin123 -X POST "http://localhost:8080/api/repos?name=repo-name"
+### 4) Repository not found
+
+**Error**
+
+```
+Repository not found: my-project.git
 ```
 
-### 调试模式
+**Fix**
 
-```bash
-java -jar mini-git-server-1.0.0.jar \
-  --logging.level.com.minigit=DEBUG \
-  --logging.level.org.eclipse.jgit=INFO
-```
+* Create the repo via REST API first, or verify the URL.
+
+### Debug mode
+
+* Start the server with `--debug`.
 
 ---
 
-## 🚀 部署建议
+## 🚀 Deployment
 
-### Windows 服务部署
+### Windows service
 
-使用 NSSM 将应用注册为 Windows 服务：
+Use NSSM to register the application as a service:
 
-```cmd
-:: 下载 NSSM 并安装服务
-nssm install MiniGitServer "C:\Program Files\Java\jdk1.8.0_XXX\bin\java.exe"
-nssm set MiniGitServer Parameters "-jar D:\mini-git-server\mini-git-server-1.0.0.jar --vcs.storage.dir=D:\git-repos"
-nssm start MiniGitServer
+```
+# Download NSSM and install
 ```
 
-### Linux systemd 部署
+### Linux systemd
 
-创建服务文件 `/etc/systemd/system/mini-git-server.service`：
+Create `/etc/systemd/system/mini-git-server.service`:
 
 ```ini
 [Unit]
@@ -422,15 +397,15 @@ After=network.target
 [Service]
 Type=simple
 User=git
-ExecStart=/usr/bin/java -jar /opt/mini-git-server/mini-git-server-1.0.0.jar --vcs.storage.dir=/opt/git-repos
+WorkingDirectory=/opt/mini-git-server
+ExecStart=/usr/bin/java -jar /opt/mini-git-server/mini-git-server-1.0.0.jar
 Restart=always
-RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-启动服务：
+Start the service:
 
 ```bash
 sudo systemctl daemon-reload
@@ -438,43 +413,45 @@ sudo systemctl enable mini-git-server
 sudo systemctl start mini-git-server
 ```
 
-### Docker 部署 (可选)
+### Docker (optional)
 
-创建 `Dockerfile`：
+Create `Dockerfile`:
 
 ```dockerfile
-FROM openjdk:8-jre-alpine
-COPY target/mini-git-server-1.0.0.jar /app.jar
+FROM eclipse-temurin:8-jre
+WORKDIR /app
+COPY target/mini-git-server-1.0.0.jar /app/app.jar
 EXPOSE 8080
-VOLUME ["/data"]
-ENTRYPOINT ["java", "-jar", "/app.jar", "--vcs.storage.dir=/data/repos"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
-构建和运行：
+Build and run:
 
 ```bash
 docker build -t mini-git-server .
-docker run -d -p 8080:8080 -v /host/git-data:/data mini-git-server
+docker run -d -p 8080:8080 -v ./data:/app/data mini-git-server
 ```
 
 ---
 
-## 📝 版本信息
+## 📝 Version info
 
-* **当前版本**: 1.0.0
-* **构建时间**: 2025-08-29
-* **Java 版本**: 1.8+
-* **Spring Boot**: 2.7.18
-* **JGit**: 5.13.3
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request 来改进这个项目。
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。
+* **Current version**: 1.0.0
+* **Build time**: 2025-08-29
+* **Java version**: 1.8+
 
 ---
 
-**提示**: 这是一个轻量级 Git 服务器，适用于小团队内网使用。如需更多高级功能（如 Web 界面、细粒度权限控制、Git LFS 等），建议使用 GitLab、Gitea 等成熟解决方案。
+## 🤝 Contributing
+
+Issues and pull requests are welcome.
+
+---
+
+## 📄 License
+
+This project is released under the MIT License.
+
+---
+
+**Tip**: This is a lightweight Git server for small teams or internal networks. For advanced features (web UI, fine-grained permissions, Git LFS, etc.), consider GitLab, Gitea, or other mature solutions.

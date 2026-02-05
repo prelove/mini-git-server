@@ -1,7 +1,7 @@
 package com.minigit.dto;
 
 /**
- * 仓库响应DTO
+ * Repository response DTO.
  */
 public class RepositoryResponse {
 

@@ -9,13 +9,13 @@ import javax.servlet.http.HttpServletRequest;
 import java.security.Principal;
 
 /**
- * 登录控制器
+ * Login controller.
  */
 @Controller
 public class LoginController {
 
     /**
-     * 登录页面
+     * Login page.
      */
     @GetMapping("/login")
     public String login(
@@ -25,7 +25,7 @@ public class LoginController {
             HttpServletRequest request,
             Principal principal) {
         
-        // 如果用户已经登录，重定向到管理页面
+        // If the user is already authenticated, redirect to admin.
         if (principal != null) {
             return "redirect:/admin";
         }

@@ -18,8 +18,8 @@ import java.io.IOException;
 import java.security.Principal;
 
 /**
- * 自定义仓库解析器（更新版本）
- * 用于将Git HTTP请求路径解析为实际的仓库位置
+ * Custom repository resolver (updated version).
+ * Resolves Git HTTP request paths to actual repository locations.
  */
 @Component
 public class CustomRepositoryResolver implements RepositoryResolver<HttpServletRequest> {
@@ -47,19 +47,19 @@ public class CustomRepositoryResolver implements RepositoryResolver<HttpServletR
         try {
             logger.info("Opening repository: {} for operation: {} by user: {}", name, operation, user);
             
-            // 标准化仓库名称
+            // Normalize repository name.
             String normalizedName = repositoryService.normalizeRepositoryName(name);
             
-            // 检查仓库是否存在
+            // Check whether the repository exists.
             if (!repositoryService.repositoryExists(normalizedName)) {
                 logger.warn("Repository not found: {}", normalizedName);
                 throw new RepositoryNotFoundException(normalizedName);
             }
             
-            // 获取仓库路径
+            // Resolve repository path.
             File repoDir = repositoryService.getRepositoryPath(normalizedName);
             
-            // 构建并打开仓库
+            // Build and open the repository.
             FileRepositoryBuilder builder = new FileRepositoryBuilder();
             Repository repository = builder
                 .setGitDir(repoDir)
@@ -80,7 +80,7 @@ public class CustomRepositoryResolver implements RepositoryResolver<HttpServletR
     }
 
     /**
-     * 确定Git操作类型
+     * Determine Git operation type.
      */
     private String determineOperation(HttpServletRequest request) {
         String uri = request.getRequestURI();
@@ -104,7 +104,7 @@ public class CustomRepositoryResolver implements RepositoryResolver<HttpServletR
     }
 
     /**
-     * 获取用户名
+     * Get the username.
      */
     private String getUserName(HttpServletRequest request) {
         Principal principal = request.getUserPrincipal();

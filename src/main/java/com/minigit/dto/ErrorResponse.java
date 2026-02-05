@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.Instant;
 
 /**
- * 错误响应DTO
+ * Error response DTO.
  */
 public class ErrorResponse {
 

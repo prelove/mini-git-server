@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>创建仓库 - Mini Git Server</title>
+    <title>Create Repository - Mini Git Server</title>
     <style>
         * {
             margin: 0;
@@ -111,30 +111,30 @@
                 <h1>🔧 Mini Git Server</h1>
             </div>
             <div>
-                <a href="/admin" style="color: white; text-decoration: none;">← 返回管理后台</a>
+                <a href="/admin" style="color: white; text-decoration: none;">← Back to Admin</a>
             </div>
         </div>
     </header>
     
     <div class="container">
         <div class="card">
-            <h2>➕ 创建新仓库</h2>
+            <h2>➕ Create Repository</h2>
             
             <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
             
             <form th:action="@{/admin/create}" method="post">
                 <div class="form-group">
-                    <label for="name">仓库名称</label>
+                    <label for="name">Repository name</label>
                     <input type="text" id="name" name="name" required 
-                           placeholder="例如: my-project" pattern="[A-Za-z0-9_-]+">
+                           placeholder="e.g. my-project" pattern="[A-Za-z0-9_-]+">
                     <div class="help-text">
-                        只允许字母、数字、下划线和中划线。系统会自动添加 .git 后缀。
+                        Only letters, numbers, underscores, and hyphens are allowed. The system will append .git automatically.
                     </div>
                 </div>
                 
                 <div>
-                    <button type="submit" class="btn">创建仓库</button>
-                    <a href="/admin" class="btn btn-secondary">取消</a>
+                    <button type="submit" class="btn">Create</button>
+                    <a href="/admin" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>
