@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${fileName != null ? fileName : 'File Preview'} + ' - Mini Git Server'">File Preview - Mini Git Server</title>
+    <title th:text="${fileName != null ? fileName : #messages.msg('file.preview')} + ' - Mini Git Server'">File Preview - Mini Git Server</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pptxjs@2.12.0/dist/pptxjs.min.css">
@@ -193,7 +193,7 @@
         <span th:text="${repoName}">repository.git</span>
     </div>
     <div>
-        <a th:if="${backUrl != null}" th:href="${backUrl}" class="back-link">← Back to Repository</a>
+        <a th:if="${backUrl != null}" th:href="${backUrl}" class="back-link" th:text="'← ' + #{ui.back.repo}">← Back</a>
     </div>
 </header>
 
@@ -201,21 +201,21 @@
     <div class="card">
         <h2>📄 <span th:text="${fileName}">Filename</span></h2>
         <div class="info-grid">
-            <div class="info-label">Branch</div>
+            <div class="info-label" th:text="#{file.branch}">Branch</div>
             <div class="info-value" th:text="${branch != null ? branch : 'Default branch'}">main</div>
-            <div class="info-label">Path</div>
+            <div class="info-label" th:text="#{file.path}">Path</div>
             <div class="info-value" th:text="${filePath}">README.md</div>
-            <div class="info-label">Size</div>
+            <div class="info-label" th:text="#{file.size}">Size</div>
             <div class="info-value" th:text="${fileSizeFormatted}">1.2 KB</div>
-            <div class="info-label">Type</div>
+            <div class="info-label" th:text="#{file.type}">Type</div>
             <div class="info-value" th:text="${previewType}">text</div>
         </div>
         <div class="actions">
-            <a th:href="${downloadUrl}" class="btn">⬇️ Download File</a>
-            <a th:href="${rawUrl}" class="btn secondary" target="_blank" rel="noopener">View Raw Content</a>
+            <a th:href="${downloadUrl}" class="btn">⬇️ <span th:text="#{file.download}">Download File</span></a>
+            <a th:href="${rawUrl}" class="btn secondary" target="_blank" rel="noopener"> <span th:text="#{file.view.raw}">View Raw Content</span></a>
         </div>
-        <div class="preview-meta" th:if="${tooLargeForInline}">Note: The file exceeds 1 MB, inline rendering is disabled. Please download or view raw content.</div>
-        <div class="preview-meta" th:if="${binaryDetected}">Note: The file contains binary content and cannot be rendered as text.</div>
+        <div class="preview-meta" th:if="${tooLargeForInline}" th:text="#{file.note.large}">note</div>
+        <div class="preview-meta" th:if="${binaryDetected}" th:text="#{file.note.binary}">note</div>
     </div>
 
     <div class="card preview-card">
@@ -234,40 +234,40 @@
                     <iframe th:src="${pdfData}" class="pdf-frame"></iframe>
                 </div>
                 <div th:case="*">
-                    <div class="preview-placeholder">Inline preview is not supported for this file type. Please download it.</div>
+                    <div class="preview-placeholder" th:text="#{file.inline.unsupported}">unsupported</div>
                 </div>
             </div>
 
             <div th:if="${clientRenderOffice}">
-                <div id="office-status" class="office-progress">Loading Office document preview...</div>
+                <div id="office-status" class="office-progress" th:text="#{file.office.loading}">loading</div>
                 <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper" style="display:none;"></div>
                 <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container" style="display:none;"></div>
                 <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper" style="display:none;"></div>
 
                 <!-- Fallback preview options -->
                 <div id="office-fallback" style="display:none;" class="preview-placeholder">
-                    <h3>📄 Office Document Info</h3>
-                    <p th:text="'Filename: ' + ${fileName}">Filename</p>
-                    <p th:text="'File size: ' + ${fileSizeFormatted}">File size</p>
-                    <p th:text="'File type: ' + ${previewType}">File type</p>
+                    <h3>📄 <span th:text="#{file.office.info}">Office Document Info</span></h3>
+                    <p th:text="|${#messages.msg('file.office.filename')}: ${fileName}|">Filename</p>
+                    <p th:text="|${#messages.msg('file.office.filesize')}: ${fileSizeFormatted}|">File size</p>
+                    <p th:text="|${#messages.msg('file.office.filetype')}: ${previewType}|">File type</p>
                     <div class="alert" style="margin-top: 1.5rem;">
-                        <p><strong>💡 Preview tips:</strong></p>
-                        <p>• Office documents are best opened with dedicated software.</p>
-                        <p>• Download and open with Microsoft Office or WPS Office.</p>
-                        <p>• For Excel files, Google Sheets is another option.</p>
+                        <p><strong>💡 <span th:text="#{file.office.tips}">Preview tips</span></strong></p>
+                        <p>• <span th:text="#{file.office.tip1}">tip1</span></p>
+                        <p>• <span th:text="#{file.office.tip2}">tip2</span></p>
+                        <p>• <span th:text="#{file.office.tip3}">tip3</span></p>
                     </div>
                     <div style="margin-top: 1.5rem;">
-                        <a th:href="${downloadUrl}" class="btn" style="display: inline-block;">📥 Download now</a>
-                        <a th:href="${rawUrl}" class="btn secondary" style="display: inline-block; margin-left: 0.5rem;" target="_blank">🔍 View raw file</a>
+                        <a th:href="${downloadUrl}" class="btn" style="display: inline-block;">📥 <span th:text="#{file.office.download.now}">Download now</span></a>
+                        <a th:href="${rawUrl}" class="btn secondary" style="display: inline-block; margin-left: 0.5rem;" target="_blank">🔍 <span th:text="#{file.office.view.raw}">View raw file</span></a>
                     </div>
                 </div>
 
-                <div class="office-hint">If preview fails, the system will switch to download mode.</div>
+                <div class="office-hint" th:text="#{file.office.hint}">hint</div>
             </div>
         </div>
         <div th:if="${!previewAvailable}" class="preview-placeholder">
-            <p>Online preview is not supported for this file type.</p>
-            <p>You can still download or view the raw content using the buttons above.</p>
+            <p th:text="#{file.preview.unsupported}">unsupported</p>
+            <p th:text="#{file.preview.actions}">actions</p>
         </div>
     </div>
 </div>
