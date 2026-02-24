@@ -312,7 +312,7 @@
                 <h1 th:text="#{ui.title}">🔧 Mini Git Server</h1>
             </div>
             <div>
-                <a href="/admin" style="color: white; text-decoration: none;" th:text="'← ' + #{ui.back}">← Back to Admin</a>
+                <a href="/admin" style="color: white; text-decoration: none;" th:text="'← ' + #{ui.back.admin}">← Back</a>
             </div>
         </div>
     </header>
@@ -320,13 +320,13 @@
     <div class="container">
         <!-- Debug info -->
         <div class="debug-info">
-            <h4>🔍 Debug Info</h4>
-            <p>Repository status: <span th:text="${isEmpty} ? 'Empty' : 'Has content'">Status</span></p>
-            <p>Branch count: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
-            <p>Commit count: <span th:text="${commits != null ? commits.size() : 0}">0</span></p>
-            <p>File count: <span th:text="${files != null ? files.size() : 0}">0</span></p>
-            <a th:href="${debugUrl}" target="_blank" class="btn btn-small">View debug details</a>
-            <a th:href="'?debug=true'" class="btn btn-small">Enable debug mode</a>
+            <h4><span th:text="#{detail.debug}">Debug Info</span></h4>
+            <p><span th:text="#{detail.status}"></span>: <span th:text="${isEmpty} ? #messages.msg('detail.status.empty') : #messages.msg('detail.status.hasContent')">Status</span></p>
+            <p><span th:text="#{detail.branch.count}"></span>: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
+            <p><span th:text="#{detail.commit.count}"></span>: <span th:text="${commits != null ? commits.size() : 0}">0</span></p>
+            <p><span th:text="#{detail.file.count}"></span>: <span th:text="${files != null ? files.size() : 0}">0</span></p>
+            <a th:href="${debugUrl}" target="_blank" class="btn btn-small" th:text="#{detail.view.debug}">View debug details</a>
+            <a th:href="'?debug=true'" class="btn btn-small" th:text="#{detail.enable.debug}">Enable debug mode</a>
         </div>
         
         <div class="card">
@@ -349,9 +349,9 @@
         
         <!-- Git error notice -->
         <div th:if="${gitError}" class="alert alert-warning">
-            <strong>Git error:</strong> <span th:text="${gitError}"></span>
+            <strong><span th:text="#{detail.git.error}"></span>:</strong> <span th:text="${gitError}"></span>
             <div th:if="${gitErrorDetail}" style="margin-top: 0.5rem; font-size: 0.9rem;">
-                Details: <span th:text="${gitErrorDetail}"></span>
+                <span th:text="#{detail.git.error.detail}"></span>: <span th:text="${gitErrorDetail}"></span>
             </div>
         </div>
 
@@ -362,10 +362,10 @@
         <!-- Empty repository notice -->
         <div th:if="${isEmpty}" class="card">
             <div class="empty-repo">
-                <h3>📝 This repository is empty</h3>
-                <p>The repository exists but has no commits. Add content using the steps below:</p>
+                <h3>📝 <span th:text="#{detail.empty.title}">This repository is empty</span></h3>
+                <p><span th:text="#{detail.empty.desc}">The repository exists but has no commits.</span></p>
                 
-                <h4>🚀 Quick start</h4>
+                <h4>🚀 <span th:text="#{detail.quick.start}">Quick start</span></h4>
                 <pre th:text="'echo &quot;# ' + ${repoName} + '&quot; >> README.md
 git init
 git add README.md
@@ -374,7 +374,7 @@ git branch -M main
 git remote add origin ' + ${cloneUrl} + '
 git push -u origin main'">Command example</pre>
                 
-                <h4>📤 Push an existing repository</h4>
+                <h4>📤 <span th:text="#{detail.push.existing}">Push an existing repository</span></h4>
                 <pre th:text="'git remote add origin ' + ${cloneUrl} + '
 git branch -M main
 git push -u origin main'">Push commands</pre>
@@ -385,35 +385,35 @@ git push -u origin main'">Push commands</pre>
             <div th:unless="${isEmpty}" class="card">
             <!-- Branch selector -->
             <div th:if="${branches != null and !branches.empty}" class="branch-selector">
-                <span>🌿 Branch:</span>
+                <span><span th:text="#{detail.branch}">Branch</span>:</span>
                 <select id="branchSelect" onchange="switchBranch()" th:value="${currentBranch}">
                     <option th:each="branch : ${branches}"
                             th:value="${branch.shortName}"
-                            th:text="${branch.shortName + (branch.default ? ' (Default)' : '')}"
+                            th:text="${branch.shortName + (branch.default ? ' (' + #messages.msg('detail.default') + ')' : '')}"
                             th:selected="${branch.shortName == currentBranch}">
                         main
                     </option>
                 </select>
-                <span th:if="${branches.size() > 0}" th:text="${branches.size()} + ' branches total'">1 branch total</span>
+                <span th:if="${branches.size() > 0}" th:text="${branches.size()} + ' ' + #messages.msg('detail.branches.tab')">1 branch total</span>
                 <form th:action="@{|/admin/repo/${repoName}/branch|}" method="post" style="display:flex; gap:0.5rem; align-items:center;">
                     <input type="hidden" name="fromBranch" th:value="${currentBranch}" />
-                    <input type="text" name="newBranch" placeholder="New branch name" style="padding:0.3rem;" />
-                    <button type="submit" class="btn btn-small">Create branch</button>
+                    <input type="text" name="newBranch" th:placeholder="#{detail.branch}" style="padding:0.3rem;" />
+                    <button type="submit" class="btn btn-small" th:text="#{ui.create}">Create</button>
                 </form>
             </div>
 
             <!-- Status info -->
             <div class="alert alert-info" th:if="${currentBranch}">
-                Current branch: <strong th:text="${currentBranch}">master</strong> |
-                Commits: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
-                Files: <strong th:text="${files != null ? files.size() : 0}">0</strong>
+                <span th:text="#{detail.current.branch}"></span>: <strong th:text="${currentBranch}">master</strong> |
+                <span th:text="#{detail.commits.tab}"></span>: <strong th:text="${commits != null ? commits.size() : 0}">0</strong> | 
+                <span th:text="#{detail.files.tab}"></span>: <strong th:text="${files != null ? files.size() : 0}">0</strong>
             </div>
             
             <!-- Tab navigation -->
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('files')">📁 Files</button>
-                <button class="tab" onclick="switchTab('commits')">📋 Commits</button>
-                <button class="tab" onclick="switchTab('branches')">🌿 Branches</button>
+                <button class="tab active" onclick="switchTab('files')">📁 <span th:text='#{detail.files.tab}'>Files</span></button>
+                <button class="tab" onclick="switchTab('commits')">📋 <span th:text='#{detail.commits.tab}'>Commits</span></button>
+                <button class="tab" onclick="switchTab('branches')">🌿 <span th:text='#{detail.branches.tab}'>Branches</span></button>
             </div>
             
             <!-- Files tab -->
@@ -422,14 +422,14 @@ git push -u origin main'">Push commands</pre>
                     <span th:each="crumb,iter : ${breadcrumbs}">
                         <span th:if="${iter.index > 0}"> / </span>
                         <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${crumb.path != '' ? '&path=' + crumb.path : ''}|}"
-                           th:text="${iter.index == 0 ? 'root' : crumb.name}"></a>
+                           th:text="${iter.index == 0 ? #messages.msg('detail.root') : crumb.name}"></a>
                     </span>
                 </div>
                 <div th:if="${files != null and !files.empty}" class="file-list">
                     <div class="file-header">
-                        <div>Name</div>
-                        <div>Size</div>
-                        <div>Type</div>
+                        <div th:text="#{detail.name}">Name</div>
+                        <div th:text="#{detail.size}">Size</div>
+                        <div th:text="#{detail.type}">Type</div>
                     </div>
                     <div th:if="${currentPath != ''}" class="file-item">
                         <div class="file-name">
@@ -437,7 +437,7 @@ git push -u origin main'">Push commands</pre>
                             <a th:href="@{|/admin/repo/${repoName}?branch=${currentBranch}${parentPath != '' ? '&path=' + parentPath : ''}|}">..</a>
                         </div>
                         <div>-</div>
-                        <div>Directory</div>
+                        <div th:text="#{detail.directory}">Directory</div>
                     </div>
                     <div th:each="file : ${files}" class="file-item">
                         <div class="file-name">
@@ -448,17 +448,17 @@ git push -u origin main'">Push commands</pre>
                                target="_blank"
                                rel="noopener"
                                class="file-link"
-                               th:title="${'Preview ' + file.name}"
+                               th:title="${#messages.msg('file.preview') + ' ' + file.name}"
                                th:text="${file.name}"></a>
                         </div>
                         <div th:text="${file.sizeFormatted}">1.2 KB</div>
-                        <div th:text="${file.type == 'directory' ? 'Directory' : 'File'}">File</div>
+                        <div th:text="${file.type == 'directory' ? #messages.msg('detail.directory') : #messages.msg('detail.file')}">File</div>
                     </div>
                 </div>
                 <div th:if="${files == null or files.empty}" style="text-align: center; padding: 2rem; color: #666;">
-                    📂 This directory is empty or the branch has no content.
+                    <span th:text="#{detail.dir.empty}">This directory is empty</span>
                     <div style="margin-top: 1rem; font-size: 0.9rem;" th:if="${currentBranch}">
-                        Current branch: <span th:text="${currentBranch}">branch</span>
+                        <span th:text="#{detail.current.branch}"></span>: <span th:text="${currentBranch}">branch</span>
                     </div>
                 </div>
             </div>
@@ -478,9 +478,9 @@ git push -u origin main'">Push commands</pre>
                     </div>
                 </div>
                 <div th:if="${commits == null or commits.empty}" style="text-align: center; padding: 2rem; color: #666;">
-                    📋 No commits yet
+                    <span th:text="#{detail.no.commits}">No commits yet</span>
                     <div style="margin-top: 1rem; font-size: 0.9rem;">
-                        Branch: <span th:text="${currentBranch ?: 'Unknown'}">branch</span>
+                        <span th:text="#{detail.branch}"></span>: <span th:text="${currentBranch ?: #messages.msg('detail.unknown')}">branch</span>
                     </div>
                 </div>
             </div>
@@ -495,20 +495,20 @@ git push -u origin main'">Push commands</pre>
                                 <span th:if="${branch.default}" style="color: #27ae60; font-size: 0.8rem;">(Default)</span>
                             </div>
                             <div class="commit-meta" th:if="${branch.lastCommitMessage}">
-                                Last commit: <span th:text="${branch.lastCommitMessage}">commit message</span>
+                                <span th:text="#{detail.last.commit}"></span>: <span th:text="${branch.lastCommitMessage}">commit message</span>
                             </div>
                         </div>
                         <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
                     </div>
                 </div>
                 <div th:if="${branches == null or branches.empty}" style="text-align: center; padding: 2rem; color: #666;">
-                    🌿 No branches yet
+                    <span th:text="#{detail.no.branches}">No branches yet</span>
                 </div>
             </div>
         </div>
         
         <div>
-            <a href="/admin" class="btn btn-secondary" th:text="#{ui.back}">Back to list</a>
+            <a href="/admin" class="btn btn-secondary" th:text="#{ui.back.list}">Back to list</a>
         </div>
     </div>
 </body>

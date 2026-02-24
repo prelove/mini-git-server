@@ -3,140 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Git Server - Login</title>
+    <title th:text="#{ui.title} + ' - ' + #{login.title}">Mini Git Server - Login</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 400px;
-        }
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .logo h1 {
-            color: #333;
-            margin: 0;
-            font-size: 2rem;
-        }
-        .logo p {
-            color: #666;
-            margin: 0.5rem 0 0 0;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #333;
-            font-weight: 500;
-        }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-            box-sizing: border-box;
-        }
-        input[type="text"]:focus, input[type="password"]:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .btn {
-            width: 100%;
-            padding: 0.75rem;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .btn:hover {
-            background: #5a67d8;
-        }
-        .alert {
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border-radius: 5px;
-        }
-        .alert-error {
-            background: #fed7d7;
-            color: #c53030;
-            border: 1px solid #feb2b2;
-        }
-        .alert-success {
-            background: #c6f6d5;
-            color: #2d7d32;
-            border: 1px solid #9ae6b4;
-        }
-        .default-credentials {
-            background: #e3f2fd;
-            border: 1px solid #bbdefb;
-            color: #1565c0;
-            padding: 1rem;
-            border-radius: 5px;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
-        .default-credentials strong {
-            display: block;
-            margin-bottom: 0.5rem;
-        }
+        body {font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+        .login-container {background:#fff;padding:20px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);width:100%;max-width:390px;}
+        .logo {text-align:center;margin-bottom:14px;}
+        .logo h1 {margin:0;font-size:1.65rem;color:#333;}
+        .logo p {margin:4px 0 0;color:#666;font-size:.92rem;}
+        .form-group {margin-bottom:10px;}
+        label {display:block;margin-bottom:4px;color:#333;font-weight:600;font-size:.9rem;}
+        input {width:100%;padding:9px 10px;border:1px solid #d8dbe2;border-radius:6px;font-size:.95rem;box-sizing:border-box;}
+        .btn {width:100%;padding:10px;background:#667eea;color:white;border:none;border-radius:6px;font-size:.95rem;cursor:pointer;}
+        .alert,.default-credentials {padding:10px;border-radius:6px;font-size:.88rem;margin-bottom:10px;}
+        .alert-error {background:#fed7d7;color:#c53030;border:1px solid #feb2b2;}
+        .alert-success {background:#c6f6d5;color:#2d7d32;border:1px solid #9ae6b4;}
+        .default-credentials {background:#e3f2fd;border:1px solid #bbdefb;color:#1565c0;}
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="logo">
-            <h1>🔧 Mini Git Server</h1>
-            <p>Lightweight Git Server Management</p>
-        </div>
-        
-        <!-- Default credentials hint -->
-        <div class="default-credentials">
-            <strong>Default credentials:</strong>
-            Username: admin<br>
-            Password: admin123
-        </div>
-        
-        <div th:if="${error}" class="alert alert-error">
-            Invalid username or password. Please try again.
-        </div>
-        
-        <div th:if="${logout}" class="alert alert-success">
-            You have been logged out.
-        </div>
-        
-        <form method="post" action="/login">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" value="admin" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" value="admin123" required>
-            </div>
-            
-            <button type="submit" class="btn">Login</button>
-        </form>
+<div class="login-container">
+    <div class="logo">
+        <h1 th:text="#{ui.title}">Mini Git Server</h1>
+        <p th:text="#{ui.subtitle}">Lightweight Git Server Management</p>
     </div>
+
+    <div class="default-credentials">
+        <strong th:text="#{login.default.credentials}">Default credentials</strong><br>
+        <span th:text="#{ui.username}">Username</span>: <span th:text="#{login.username.default}">admin</span><br>
+        <span th:text="#{ui.password}">Password</span>: <span th:text="#{login.password.default}">admin123</span>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" th:text="#{login.error.invalid}"></div>
+    <div th:if="${logout}" class="alert alert-success" th:text="#{login.logout.success}"></div>
+
+    <form method="post" action="/login">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="form-group">
+            <label for="username" th:text="#{ui.username}">Username</label>
+            <input type="text" id="username" name="username" value="admin" required>
+        </div>
+        <div class="form-group">
+            <label for="password" th:text="#{ui.password}">Password</label>
+            <input type="password" id="password" name="password" value="admin123" required>
+        </div>
+        <button type="submit" class="btn" th:text="#{ui.login}">Login</button>
+    </form>
+</div>
 </body>
 </html>

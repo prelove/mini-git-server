@@ -1,143 +1,28 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Repository - Mini Git Server</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{create.title} + ' - ' + #{ui.title}">Create Repository - Mini Git Server</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            line-height: 1.6;
-        }
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .logo h1 {
-            font-size: 1.5rem;
-        }
-        .container {
-            max-width: 600px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .card h2 {
-            color: #2c3e50;
-            margin-bottom: 1rem;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #333;
-            font-weight: 500;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #3498db;
-        }
-        .help-text {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0.25rem;
-        }
-        .btn {
-            background: #3498db;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 5px;
-            text-decoration: none;
-            display: inline-block;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin-right: 1rem;
-        }
-        .btn:hover {
-            background: #2980b9;
-        }
-        .btn-secondary {
-            background: #95a5a6;
-        }
-        .btn-secondary:hover {
-            background: #7f8c8d;
-        }
-        .alert {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 5px;
-        }
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
+        body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;margin:0;line-height:1.45}
+        .header{background:#2c3e50;color:#fff;padding:.7rem 1rem}.header-content{max-width:980px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+        .container{max-width:660px;margin:16px auto;padding:0 12px}.card{background:#fff;padding:16px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+        .form-group{margin-bottom:10px}label{display:block;margin-bottom:4px;font-size:.9rem;font-weight:600}.help-text{font-size:.82rem;color:#666}
+        input{width:100%;padding:9px;border:1px solid #d0d7de;border-radius:6px}.btn{padding:.5rem .9rem;border-radius:6px;text-decoration:none;border:none;cursor:pointer}
+        .btn-primary{background:#3498db;color:#fff}.btn-secondary{background:#95a5a6;color:#fff}.actions{display:flex;gap:8px;margin-top:12px}.alert-error{background:#f8d7da;color:#721c24;padding:.55rem;border-radius:6px;margin-bottom:10px}
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <h1>🔧 Mini Git Server</h1>
-            </div>
-            <div>
-                <a href="/admin" style="color: white; text-decoration: none;">← Back to Admin</a>
-            </div>
+<header class="header"><div class="header-content"><h1 th:text="#{ui.title}">Mini Git Server</h1><a href="/admin" style="color:#fff" th:text="'← ' + #{ui.back.admin}">Back</a></div></header>
+<div class="container"><div class="card">
+    <h2 th:text="'➕ ' + #{create.title}">Create Repository</h2>
+    <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+    <form th:action="@{/admin/create}" method="post">
+        <div class="form-group"><label for="name" th:text="#{create.repo.name}">Repository name</label>
+            <input type="text" id="name" name="name" required th:placeholder="#{create.repo.placeholder}" pattern="[A-Za-z0-9_-]+">
+            <div class="help-text" th:text="#{create.repo.help}"></div>
         </div>
-    </header>
-    
-    <div class="container">
-        <div class="card">
-            <h2>➕ Create Repository</h2>
-            
-            <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
-            
-            <form th:action="@{/admin/create}" method="post">
-                <div class="form-group">
-                    <label for="name">Repository name</label>
-                    <input type="text" id="name" name="name" required 
-                           placeholder="e.g. my-project" pattern="[A-Za-z0-9_-]+">
-                    <div class="help-text">
-                        Only letters, numbers, underscores, and hyphens are allowed. The system will append .git automatically.
-                    </div>
-                </div>
-                
-                <div>
-                    <button type="submit" class="btn">Create</button>
-                    <a href="/admin" class="btn btn-secondary">Cancel</a>
-                </div>
-            </form>
-        </div>
-    </div>
-</body>
-</html>
+        <div class="actions"><button type="submit" class="btn btn-primary" th:text="#{ui.create}">Create</button><a href="/admin" class="btn btn-secondary" th:text="#{ui.cancel}">Cancel</a></div>
+    </form>
+</div></div>
+</body></html>
