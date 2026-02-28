@@ -59,7 +59,9 @@ public class GitClientMain {
         System.out.println("  checkout <repoPath> <branchOrCommit>");
         System.out.println("  push <repoPath> <remote> <ref> [--user U --pass P]");
         System.out.println("  pull <repoPath> <remote> <ref> [--user U --pass P]");
-        System.out.println("  remote -v <repoPath>");
+        System.out.println("  remote <repoPath>                # list (-v)");
+        System.out.println("  remote -v <repoPath>             # list");
+        System.out.println("  remote -a <repoPath> <name> <url> # add");
         System.out.println();
         System.out.println("Auth order: --user/--pass > env GIT_USER/GIT_PASSWORD > interactive");
     }
@@ -205,7 +207,30 @@ public class GitClientMain {
     }
 
     private static void cmdRemote(String[] args) throws IOException, GitAPIException {
-        if (args.length < 3 || !"-v".equals(args[1])) { System.err.println("remote -v <repoPath>"); return; }
+        if (args.length < 3 || !"-v".equals(args[1])) {
+            // Support remote -v and remote -a
+            if ("-a".equals(args[1]) && args.length >= 5) {
+                String repo = args[2];
+                String remoteName = args[3];
+                String remoteUrl = args[4];
+                try (Git git = open(repo)) {
+                    RemoteAddCommand remoteAdd = git.remoteAdd();
+                    remoteAdd.setName(remoteName);
+                    try {
+                        remoteAdd.setUri(new URIish(remoteUrl));
+                    } catch (java.net.URISyntaxException e) {
+                        System.err.println("Invalid remote URL: " + remoteUrl);
+                        return;
+                    }
+                    remoteAdd.call();
+                    System.out.println("Added remote " + remoteName + " -> " + remoteUrl);
+                }
+                return;
+            }
+            System.err.println("remote -v <repoPath>"); 
+            System.err.println("remote -a <repoPath> <name> <url>"); 
+            return; 
+        }
         String repo = args[2];
         try (Git git = open(repo)) {
             for (RemoteConfig rc : git.remoteList().call()) {

@@ -60,42 +60,35 @@ public class HealthController {
         String overallStatus = health.getStatus().getCode();
         Map<String, Object> details = health.getDetails();
         
-        // Parse detail info.
-        Map<String, Object> vcsDetails = (Map<String, Object>) details.get("vcs");
-        Map<String, Object> diskDetails = (Map<String, Object>) details.get("diskSpace");
-        Map<String, Object> pingDetails = (Map<String, Object>) details.get("ping");
-        
         model.addAttribute("overallStatus", overallStatus);
         model.addAttribute("checkTime", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         
-        // VCS info.
-        if (vcsDetails != null) {
+        // VCS details are stored directly in the Health object (not nested under "vcs").
+        String storagePath = (String) details.get("storage");
+        if (storagePath != null) {
             model.addAttribute("vcsStatus", "UP");
-            model.addAttribute("storageDir", vcsDetails.get("storage"));
-            model.addAttribute("repositories", vcsDetails.get("repositories"));
-            model.addAttribute("version", vcsDetails.get("version"));
+            model.addAttribute("storageDir", storagePath);
+            model.addAttribute("repoCount", details.get("repositories"));
+            model.addAttribute("version", details.get("version"));
+            
+            // Compute disk space from the storage directory.
+            File storageDir = new File(storagePath);
+            long totalSpace = storageDir.getTotalSpace();
+            long freeSpace = storageDir.getFreeSpace();
+            long usedSpace = totalSpace - freeSpace;
+            model.addAttribute("totalSpace", formatBytes(totalSpace));
+            model.addAttribute("freeSpace", formatBytes(freeSpace));
+            model.addAttribute("usedSpace", formatBytes(usedSpace));
+            if (totalSpace > 0) {
+                model.addAttribute("usagePercent", Math.round((double) usedSpace / totalSpace * 100));
+            }
         } else {
             model.addAttribute("vcsStatus", "DOWN");
         }
         
-        // Disk info.
-        if (diskDetails != null && diskDetails.get("details") != null) {
-            Map<String, Object> diskDetailInfo = (Map<String, Object>) diskDetails.get("details");
-            long totalSpace = ((Number) diskDetailInfo.get("total")).longValue();
-            long freeSpace = ((Number) diskDetailInfo.get("free")).longValue();
-            long usedSpace = totalSpace - freeSpace;
-            
-            model.addAttribute("diskStatus", diskDetails.get("status"));
-            model.addAttribute("totalSpace", formatBytes(totalSpace));
-            model.addAttribute("freeSpace", formatBytes(freeSpace));
-            model.addAttribute("usedSpace", formatBytes(usedSpace));
-            model.addAttribute("usagePercent", Math.round((double) usedSpace / totalSpace * 100));
-        }
-        
-        // Network status.
-        if (pingDetails != null) {
-            model.addAttribute("pingStatus", pingDetails.get("status"));
-        }
+        // Network/ping status: the service is reachable since we are processing the request.
+        model.addAttribute("pingStatus", "UP");
+        model.addAttribute("responseTime", "-");
         
         return "health";
     }

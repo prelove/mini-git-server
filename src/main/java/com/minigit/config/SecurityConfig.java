@@ -18,6 +18,13 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
+    private final VcsProperties vcsProperties;
+
+    public SecurityConfig(VcsProperties vcsProperties) {
+        this.vcsProperties = vcsProperties;
+    }
+
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
@@ -72,10 +79,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder encoder) {
-        // Test account: git / 123456
         return new InMemoryUserDetailsManager(
-                User.withUsername("admin")
-                        .password(encoder.encode("admin123"))
+                User.withUsername(vcsProperties.getAuth().getUser())
+                        .password(encoder.encode(vcsProperties.getAuth().getPass()))
                         .roles("GIT")
                         .build()
         );

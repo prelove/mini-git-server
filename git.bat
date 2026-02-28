@@ -121,11 +121,21 @@ if /I "%CMD%"=="checkout" (
 )
 
 if /I "%CMD%"=="remote" (
-  rem Only -v is supported.
+  rem -v: list remotes; -a: add remote
   if /I "%~1"=="-v" (
     java -jar "%JAR%" remote -v "%REPO%"
     exit /b %ERRORLEVEL%
   )
+  if /I "%~1"=="-a" (
+    if "%~3"=="" (
+      echo usage: git remote -a ^<name^> ^<url^>
+      exit /b 2
+    )
+    java -jar "%JAR%" remote -a "%REPO%" "%~2" "%~3"
+    exit /b %ERRORLEVEL%
+  )
+  echo [git.bat] Supported: remote -v, remote -a ^<name^> ^<url^>
+  exit /b 3
 )
 
 if /I "%CMD%"=="push" (
