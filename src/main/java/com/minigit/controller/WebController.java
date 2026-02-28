@@ -67,6 +67,10 @@ public class WebController {
 
     private static final int MAX_INLINE_PREVIEW_BYTES = 1_048_576; // 1 MB
 
+    // Branch names: letters/digits/dash/underscore/dot/slash; no ".." or "//".
+    private static final java.util.regex.Pattern BRANCH_NAME_PATTERN =
+            java.util.regex.Pattern.compile("^(?!.*\\.\\.)(?!.*//)[A-Za-z0-9][A-Za-z0-9._/\\-]*$");
+
     static {
         Map<String, String> languageMap = new HashMap<>();
         languageMap.put("java", "java");
@@ -128,7 +132,7 @@ public class WebController {
             model.addAttribute("username", principal.getName());
             model.addAttribute("repoCount", repositories.size());
 
-            File storageDir = ((com.minigit.service.impl.RepositoryServiceImpl) repositoryService).getStorageDir();
+            File storageDir = repositoryService.getStorageDir();
             model.addAttribute("storageDir", storageDir.getAbsolutePath());
             return "admin/index";
         } catch (Exception e) {
@@ -449,6 +453,10 @@ public class WebController {
                                @RequestParam("fromBranch") String fromBranch,
                                @RequestParam("newBranch") String newBranch,
                                RedirectAttributes redirectAttributes) {
+        if (!isValidBranchName(newBranch)) {
+            redirectAttributes.addFlashAttribute("error", getMessage("validation.branch.invalid"));
+            return "redirect:/admin/repo/" + name + "?branch=" + fromBranch;
+        }
         try {
             String normalizedName = repositoryService.normalizeRepositoryName(name);
             File repoDir = repositoryService.getRepositoryPath(normalizedName);
@@ -459,6 +467,33 @@ public class WebController {
             logger.error("Failed to create branch {} from {}", newBranch, fromBranch, e);
             redirectAttributes.addFlashAttribute("error", getMessage("branch.create.failed"));
             return "redirect:/admin/repo/" + name + "?branch=" + fromBranch;
+        }
+    }
+
+    /**
+     * Delete a branch.
+     */
+    @PostMapping("/admin/repo/{name}/branch/delete")
+    public String deleteBranch(@PathVariable String name,
+                               @RequestParam("branchName") String branchName,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            File repoDir = repositoryService.getRepositoryPath(normalizedName);
+            gitRepositoryService.deleteBranch(repoDir, branchName);
+            redirectAttributes.addFlashAttribute("success", getMessage("branch.deleted", branchName));
+            return "redirect:/admin/repo/" + normalizedName;
+        } catch (IllegalArgumentException e) {
+            if ("default.branch".equals(e.getMessage())) {
+                redirectAttributes.addFlashAttribute("error", getMessage("branch.default.cannot.delete"));
+            } else {
+                redirectAttributes.addFlashAttribute("error", getMessage("branch.delete.failed"));
+            }
+            return "redirect:/admin/repo/" + name;
+        } catch (Exception e) {
+            logger.error("Failed to delete branch {} from repo {}", branchName, name, e);
+            redirectAttributes.addFlashAttribute("error", getMessage("branch.delete.failed"));
+            return "redirect:/admin/repo/" + name;
         }
     }
 
@@ -667,7 +702,7 @@ public class WebController {
             model.addAttribute("freeMemory", formatBytes(freeMemory));
 
             // Storage info.
-            File storageDir = ((com.minigit.service.impl.RepositoryServiceImpl) repositoryService).getStorageDir();
+            File storageDir = repositoryService.getStorageDir();
             model.addAttribute("storageDir", storageDir.getAbsolutePath());
             model.addAttribute("totalSpace", formatBytes(storageDir.getTotalSpace()));
             model.addAttribute("freeSpace", formatBytes(storageDir.getFreeSpace()));
@@ -797,5 +832,13 @@ public class WebController {
         else if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
         else if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
         else return String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+
+    /**
+     * Validate a branch name: letters/digits/dash/underscore/dot/slash, no ".." or "//".
+     */
+    private boolean isValidBranchName(String name) {
+        if (name == null || name.trim().isEmpty() || name.length() > 250) return false;
+        return BRANCH_NAME_PATTERN.matcher(name).matches();
     }
 }

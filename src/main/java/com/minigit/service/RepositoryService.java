@@ -54,4 +54,10 @@ public interface RepositoryService {
      * @param name repository name
      */
     void deleteRepository(String name);
+
+    /**
+     * Get the storage directory for all repositories.
+     * @return storage directory file
+     */
+    java.io.File getStorageDir();
 }

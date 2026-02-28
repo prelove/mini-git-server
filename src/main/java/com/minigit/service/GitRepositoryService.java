@@ -393,6 +393,31 @@ public boolean isEmptyRepository(File repoDir) throws Exception {
         }
     }
 
+    public void deleteBranch(File repoDir, String branchName) throws Exception {
+        try (Repository repository = new FileRepositoryBuilder()
+                .setGitDir(repoDir)
+                .setMustExist(true)
+                .build();
+             Git git = new Git(repository)) {
+
+            // Prevent deleting the default (HEAD) branch.
+            String defaultBranch = getDefaultBranch(repository);
+            if (defaultBranch != null) {
+                String shortDefault = Repository.shortenRefName(defaultBranch);
+                if (branchName.equals(shortDefault) || branchName.equals(defaultBranch)) {
+                    throw new IllegalArgumentException("default.branch");
+                }
+            }
+
+            // Ensure the branch actually exists.
+            if (repository.resolve("refs/heads/" + branchName) == null) {
+                throw new IllegalArgumentException("Branch not found: " + branchName);
+            }
+
+            git.branchDelete().setBranchNames(branchName).setForce(true).call();
+        }
+    }
+
     // -------- Helpers --------
 
     private CommitInfo toCommitInfo(RevCommit commit) {

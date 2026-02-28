@@ -201,6 +201,7 @@ public class RepositoryServiceImpl implements RepositoryService {
     /**
      * Get storage directory.
      */
+    @Override
     public File getStorageDir() {
         return storageDir;
     }

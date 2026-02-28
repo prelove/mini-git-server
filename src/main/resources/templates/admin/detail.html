@@ -503,7 +503,18 @@ git push -u origin main'">Push commands</pre>
                                 <span th:text="#{detail.last.commit}"></span>: <span th:text="${branch.lastCommitMessage}">commit message</span>
                             </div>
                         </div>
-                        <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
+                            <form th:if="${!branch.default}"
+                                  th:action="@{|/admin/repo/${repoName}/branch/delete|}" method="post"
+                                  style="display:inline"
+                                  th:data-confirm="#{branch.delete.confirm(${branch.shortName})}"
+                                  onsubmit="return confirmDelete(this)">
+                                <input type="hidden" name="branchName" th:value="${branch.shortName}" />
+                                <button type="submit" class="btn btn-small"
+                                        style="background:#e74c3c;" th:text="#{ui.delete}">Delete</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <div th:if="${branches == null or branches.empty}" style="text-align: center; padding: 2rem; color: #666;">

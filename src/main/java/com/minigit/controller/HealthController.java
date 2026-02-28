@@ -141,7 +141,7 @@ class VcsHealthIndicator implements HealthIndicator {
     public Health health() {
         try {
             // Check whether the storage directory is accessible.
-            File storageDir = ((com.minigit.service.impl.RepositoryServiceImpl) repositoryService).getStorageDir();
+            File storageDir = repositoryService.getStorageDir();
             
             if (!storageDir.exists() || !storageDir.canRead() || !storageDir.canWrite()) {
                 return Health.down()
