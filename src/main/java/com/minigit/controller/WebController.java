@@ -453,11 +453,11 @@ public class WebController {
             String normalizedName = repositoryService.normalizeRepositoryName(name);
             File repoDir = repositoryService.getRepositoryPath(normalizedName);
             gitRepositoryService.createBranch(repoDir, fromBranch, newBranch);
-            redirectAttributes.addFlashAttribute("success", "Branch created successfully: " + newBranch);
+            redirectAttributes.addFlashAttribute("success", getMessage("branch.created", newBranch));
             return "redirect:/admin/repo/" + normalizedName + "?branch=" + newBranch;
         } catch (Exception e) {
             logger.error("Failed to create branch {} from {}", newBranch, fromBranch, e);
-            redirectAttributes.addFlashAttribute("error", "Failed to create branch: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", getMessage("branch.create.failed"));
             return "redirect:/admin/repo/" + name + "?branch=" + fromBranch;
         }
     }

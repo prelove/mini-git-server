@@ -295,6 +295,11 @@
             currentUrl.searchParams.set('branch', branch);
             window.location.href = currentUrl.toString();
         }
+
+        function confirmDelete(form) {
+            var msg = form.getAttribute('data-confirm');
+            return confirm(msg || '');
+        }
         
         // Show the first tab after page load.
         window.onload = function() {
@@ -507,8 +512,13 @@ git push -u origin main'">Push commands</pre>
             </div>
         </div>
         
-        <div>
+        <div style="display:flex; gap:8px; align-items:center;">
             <a href="/admin" class="btn btn-secondary" th:text="#{ui.back.list}">Back to list</a>
+            <form th:action="@{|/admin/repo/${repoName}/delete|}" method="post"
+                  th:data-confirm="#{ui.delete.confirm}" onsubmit="return confirmDelete(this)">
+                <button type="submit" class="btn" style="background:#e74c3c;"
+                        th:text="'🗑 ' + #{ui.delete}">Delete</button>
+            </form>
         </div>
     </div>
 </body>
