@@ -318,8 +318,8 @@
     </header>
     
     <div class="container">
-        <!-- Debug info -->
-        <div class="debug-info">
+        <!-- Debug info (only shown in debug mode) -->
+        <div th:if="${debugMode}" class="debug-info">
             <h4><span th:text="#{detail.debug}">Debug Info</span></h4>
             <p><span th:text="#{detail.status}"></span>: <span th:text="${isEmpty} ? #messages.msg('detail.status.empty') : #messages.msg('detail.status.hasContent')">Status</span></p>
             <p><span th:text="#{detail.branch.count}"></span>: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
@@ -340,7 +340,7 @@
                 <div class="info-value" th:text="${repoPath}">/path/to/repo</div>
                 
                 <div class="info-label" th:text="#{ui.repo.size} + ':'">Repository size:</div>
-                <div class="info-value" th:text="${#numbers.formatDecimal(repoSize / 1024.0, 1, 1)} + ' KB'">0 KB</div>
+                <div class="info-value" th:text="${repoSizeFormatted}">0 B</div>
             </div>
             
             <h3 th:text="#{ui.clone.url}">Clone URL</h3>

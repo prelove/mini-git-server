@@ -463,6 +463,27 @@ public class WebController {
     }
 
     /**
+     * Delete repository.
+     */
+    @PostMapping("/admin/repo/{name}/delete")
+    public String deleteRepo(@PathVariable String name, RedirectAttributes redirectAttributes) {
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                redirectAttributes.addFlashAttribute("error", getMessage("repo.not.found", normalizedName));
+                return "redirect:/admin";
+            }
+            repositoryService.deleteRepository(name);
+            redirectAttributes.addFlashAttribute("success", getMessage("repo.deleted", normalizedName));
+            return "redirect:/admin";
+        } catch (Exception e) {
+            logger.error("Failed to delete repository via web: {}", name, e);
+            redirectAttributes.addFlashAttribute("error", getMessage("internal.error"));
+            return "redirect:/admin";
+        }
+    }
+
+    /**
      * Repository creation page.
      */
     @GetMapping("/admin/create")
@@ -522,7 +543,9 @@ public class WebController {
             model.addAttribute("repoName", normalizedName);
             model.addAttribute("repoPath", repoDir.getAbsolutePath());
             model.addAttribute("cloneUrl", getCloneUrl(normalizedName, request));
-            model.addAttribute("repoSize", getDirectorySize(repoDir));
+            long repoSize = getDirectorySize(repoDir);
+            model.addAttribute("repoSize", repoSize);
+            model.addAttribute("repoSizeFormatted", formatBytes(repoSize));
 
             boolean isEmpty;
             try {

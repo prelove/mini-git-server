@@ -48,4 +48,10 @@ public interface RepositoryService {
      * @return normalized name
      */
     String normalizeRepositoryName(String name);
+
+    /**
+     * Delete a repository.
+     * @param name repository name
+     */
+    void deleteRepository(String name);
 }

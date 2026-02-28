@@ -116,4 +116,36 @@ class RepositoryControllerTest {
         mockMvc.perform(get("/api/repos").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().is4xxClientError());
     }
+
+    // --- DELETE /api/repos/{name} ---
+
+    @Test
+    @WithMockUser
+    void deleteRepositorySucceeds() throws Exception {
+        when(repositoryService.normalizeRepositoryName("my-repo")).thenReturn("my-repo.git");
+        when(repositoryService.repositoryExists("my-repo.git")).thenReturn(true);
+        doNothing().when(repositoryService).deleteRepository("my-repo");
+
+        mockMvc.perform(delete("/api/repos/my-repo")
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser
+    void deleteRepositoryReturnsNotFoundForMissingRepo() throws Exception {
+        when(repositoryService.normalizeRepositoryName("missing")).thenReturn("missing.git");
+        when(repositoryService.repositoryExists("missing.git")).thenReturn(false);
+
+        mockMvc.perform(delete("/api/repos/missing")
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("REPO_NOT_FOUND"));
+    }
+
+    @Test
+    void deleteRepositoryRequiresAuthentication() throws Exception {
+        mockMvc.perform(delete("/api/repos/my-repo").with(csrf()))
+                .andExpect(status().is4xxClientError());
+    }
 }
