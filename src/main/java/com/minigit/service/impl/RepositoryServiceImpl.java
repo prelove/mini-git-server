@@ -11,9 +11,12 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -158,9 +161,47 @@ public class RepositoryServiceImpl implements RepositoryService {
         return normalized;
     }
 
+    @Override
+    public void deleteRepository(String name) {
+        String normalizedName = normalizeRepositoryName(name);
+        File repoDir = new File(storageDir, normalizedName);
+
+        if (!repoDir.exists()) {
+            throw new IllegalArgumentException("Repository not found: " + normalizedName);
+        }
+
+        try {
+            final Path storagePath = storageDir.toPath().toRealPath();
+            Path repoDirPath = repoDir.toPath().toRealPath();
+            // Ensure the repository is inside the storage directory to prevent path traversal.
+            if (!repoDirPath.startsWith(storagePath)) {
+                throw new IOException("Repository path is outside storage directory: " + repoDirPath);
+            }
+            Files.walkFileTree(repoDirPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc != null) throw exc;
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            logger.info("Deleted repository: {}", repoDirPath);
+        } catch (IOException e) {
+            logger.error("Failed to delete repository: {}", normalizedName, e);
+            throw new RuntimeException("Failed to delete repository", e);
+        }
+    }
+
     /**
      * Get storage directory.
      */
+    @Override
     public File getStorageDir() {
         return storageDir;
     }

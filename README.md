@@ -9,12 +9,15 @@ A lightweight Git server that supports the Git Smart HTTP protocol, built with J
 ## 🎯 Features
 
 * ✅ **Git Smart HTTP**: Fully compatible with standard Git clients (including Eclipse EGit)
-* ✅ **RESTful API**: Simple repository management endpoints
-* ✅ **Localization**: English / Japanese UI and messages
+* ✅ **RESTful API**: Repository management endpoints (create, list, delete)
+* ✅ **Web Admin UI**: Browser-based admin panel for repository and branch management
+* ✅ **File Browser**: Browse, preview (Markdown, code, images, PDF), and download files
+* ✅ **Branch Management**: Create and delete branches from the web UI
+* ✅ **Localization**: English / Chinese / Japanese UI and messages
 * ✅ **HTTP Basic Auth**: Simple and reliable authentication
 * ✅ **Single-jar deployment**: Package as an executable JAR and run
 * ✅ **Audit logging**: Detailed Git access logs
-* ✅ **Health check**: Service health monitoring
+* ✅ **Health check**: Service health monitoring at `/actuator/health`
 * ✅ **Built-in CLI client (mgit)**: Common Git operations without native `git.exe` (init/clone/status/add/commit/log/branch/checkout/push/pull/remote)
 
 ---
@@ -66,12 +69,24 @@ java -jar target/mini-git-server-1.0.0.jar \
 ### Verify service
 
 ```bash
-curl http://localhost:8080/actuator/health
+curl http://localhost:8082/actuator/health
 ```
 
 ---
 
 ## 📚 Usage Guide
+
+### Web Admin UI
+
+Navigate to `http://localhost:8082/admin` in your browser and log in with your configured credentials.
+
+The admin panel lets you:
+- **List** all repositories with their sizes
+- **Create** new repositories
+- **Delete** repositories (with confirmation)
+- **Browse** the file tree, view commits, and manage branches
+- **Preview** files inline: Markdown, source code, images, PDF, and Office documents
+- **Create / delete** branches
 
 ### REST API
 
@@ -80,7 +95,7 @@ curl http://localhost:8080/actuator/health
 ```bash
 # English locale
 curl -u admin:admin123 -H "Accept-Language: en" -X POST \
-  "http://localhost:8080/api/repos?name=my-project"
+  "http://localhost:8082/api/repos?name=my-project"
 
 # Response
 {
@@ -91,7 +106,7 @@ curl -u admin:admin123 -H "Accept-Language: en" -X POST \
 #### 2. List repositories
 
 ```bash
-curl -u admin:admin123 "http://localhost:8080/api/repos"
+curl -u admin:admin123 "http://localhost:8082/api/repos"
 
 # Response
 [
@@ -100,7 +115,16 @@ curl -u admin:admin123 "http://localhost:8080/api/repos"
 ]
 ```
 
-#### 3. Error response format
+#### 3. Delete repository
+
+```bash
+curl -u admin:admin123 -X DELETE \
+  "http://localhost:8082/api/repos/my-project"
+
+# Response: 204 No Content on success, 404 if not found
+```
+
+#### 4. Error response format
 
 ```json
 {
@@ -118,7 +142,7 @@ curl -u admin:admin123 "http://localhost:8080/api/repos"
 
     * In Eclipse: `File` → `Import` → `Git` → `Projects from Git`
     * Choose `Clone URI`
-    * Enter URI: `http://localhost:8080/git/my-project.git`
+    * Enter URI: `http://localhost:8082/git/my-project.git`
     * Credentials: `admin` / `admin123`
 
 2. **Push code**
@@ -130,10 +154,10 @@ curl -u admin:admin123 "http://localhost:8080/api/repos"
 
 ```bash
 # Clone with credentials
-git clone http://admin:admin123@localhost:8080/git/my-project.git
+git clone http://admin:admin123@localhost:8082/git/my-project.git
 
 # Or step-by-step (will prompt for password)
-git clone http://localhost:8080/git/my-project.git
+git clone http://localhost:8082/git/my-project.git
 
 # Add and commit
 cd my-project
@@ -240,7 +264,7 @@ vcs.storage.dir=./data/repos
 vcs.auth.user=admin
 vcs.auth.pass=admin123
 
-# Default language (en/ja)
+# Default language (en/zh/ja)
 vcs.lang.default=en
 
 # Logging
@@ -303,7 +327,7 @@ java -jar target/mini-git-server-1.0.0.jar \
 ### Health check
 
 ```bash
-curl http://localhost:8080/actuator/health
+curl http://localhost:8082/actuator/health
 ```
 
 ### Log files
@@ -350,7 +374,7 @@ Permission denied: ./data/repos
 **Error**
 
 ```
-Authentication failed for 'http://localhost:8080/git/my-project.git/'
+Authentication failed for 'http://localhost:8082/git/my-project.git/'
 ```
 
 **Fix**

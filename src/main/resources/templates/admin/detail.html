@@ -295,6 +295,11 @@
             currentUrl.searchParams.set('branch', branch);
             window.location.href = currentUrl.toString();
         }
+
+        function confirmDelete(form) {
+            var msg = form.getAttribute('data-confirm');
+            return confirm(msg || '');
+        }
         
         // Show the first tab after page load.
         window.onload = function() {
@@ -318,8 +323,8 @@
     </header>
     
     <div class="container">
-        <!-- Debug info -->
-        <div class="debug-info">
+        <!-- Debug info (only shown in debug mode) -->
+        <div th:if="${debugMode}" class="debug-info">
             <h4><span th:text="#{detail.debug}">Debug Info</span></h4>
             <p><span th:text="#{detail.status}"></span>: <span th:text="${isEmpty} ? #messages.msg('detail.status.empty') : #messages.msg('detail.status.hasContent')">Status</span></p>
             <p><span th:text="#{detail.branch.count}"></span>: <span th:text="${branches != null ? branches.size() : 0}">0</span></p>
@@ -340,7 +345,7 @@
                 <div class="info-value" th:text="${repoPath}">/path/to/repo</div>
                 
                 <div class="info-label" th:text="#{ui.repo.size} + ':'">Repository size:</div>
-                <div class="info-value" th:text="${#numbers.formatDecimal(repoSize / 1024.0, 1, 1)} + ' KB'">0 KB</div>
+                <div class="info-value" th:text="${repoSizeFormatted}">0 B</div>
             </div>
             
             <h3 th:text="#{ui.clone.url}">Clone URL</h3>
@@ -498,7 +503,18 @@ git push -u origin main'">Push commands</pre>
                                 <span th:text="#{detail.last.commit}"></span>: <span th:text="${branch.lastCommitMessage}">commit message</span>
                             </div>
                         </div>
-                        <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <div th:if="${branch.lastCommitId}" class="commit-id" th:text="${branch.lastCommitId}">abcd1234</div>
+                            <form th:if="${!branch.default}"
+                                  th:action="@{|/admin/repo/${repoName}/branch/delete|}" method="post"
+                                  style="display:inline"
+                                  th:data-confirm="#{branch.delete.confirm(${branch.shortName})}"
+                                  onsubmit="return confirmDelete(this)">
+                                <input type="hidden" name="branchName" th:value="${branch.shortName}" />
+                                <button type="submit" class="btn btn-small"
+                                        style="background:#e74c3c;" th:text="#{ui.delete}">Delete</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <div th:if="${branches == null or branches.empty}" style="text-align: center; padding: 2rem; color: #666;">
@@ -507,8 +523,13 @@ git push -u origin main'">Push commands</pre>
             </div>
         </div>
         
-        <div>
+        <div style="display:flex; gap:8px; align-items:center;">
             <a href="/admin" class="btn btn-secondary" th:text="#{ui.back.list}">Back to list</a>
+            <form th:action="@{|/admin/repo/${repoName}/delete|}" method="post"
+                  th:data-confirm="#{ui.delete.confirm}" onsubmit="return confirmDelete(this)">
+                <button type="submit" class="btn" style="background:#e74c3c;"
+                        th:text="'🗑 ' + #{ui.delete}">Delete</button>
+            </form>
         </div>
     </div>
 </body>

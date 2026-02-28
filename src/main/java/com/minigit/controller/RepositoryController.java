@@ -86,6 +86,29 @@ public class RepositoryController {
     }
 
     /**
+     * Delete repository.
+     */
+    @DeleteMapping("/{name}")
+    public ResponseEntity<?> deleteRepository(@PathVariable String name) {
+        try {
+            logger.info("Deleting repository: {}", name);
+
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                return createErrorResponse("REPO_NOT_FOUND", "repo.not.found", HttpStatus.NOT_FOUND, normalizedName);
+            }
+
+            repositoryService.deleteRepository(name);
+            logger.info("Repository deleted successfully: {}", normalizedName);
+            return ResponseEntity.noContent().build();
+
+        } catch (Exception e) {
+            logger.error("Failed to delete repository: {}", name, e);
+            return createErrorResponse("INTERNAL_ERROR", "internal.error", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
      * Create error response.
      */
     private ResponseEntity<ErrorResponse> createErrorResponse(String errorCode, String messageKey, HttpStatus status, Object... args) {

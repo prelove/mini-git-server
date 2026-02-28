@@ -121,4 +121,29 @@ class RepositoryServiceImplTest {
         File path = service.getRepositoryPath("my-repo");
         assertEquals(new File(tempDir.toFile(), "my-repo.git"), path);
     }
+
+    // --- deleteRepository ---
+
+    @Test
+    void deleteRepositoryRemovesRepo() {
+        service.createRepository("to-delete");
+        assertTrue(service.repositoryExists("to-delete"));
+        service.deleteRepository("to-delete");
+        assertFalse(service.repositoryExists("to-delete"));
+    }
+
+    @Test
+    void deleteRepositoryThrowsWhenNotFound() {
+        assertThrows(IllegalArgumentException.class, () -> service.deleteRepository("nonexistent"));
+    }
+
+    @Test
+    void deleteRepositoryRemovesFromList() {
+        service.createRepository("list-repo");
+        service.createRepository("keep-repo");
+        service.deleteRepository("list-repo");
+        List<String> list = service.listRepositories();
+        assertFalse(list.contains("list-repo.git"));
+        assertTrue(list.contains("keep-repo.git"));
+    }
 }
