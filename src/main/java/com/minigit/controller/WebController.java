@@ -23,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.*;
@@ -65,6 +66,7 @@ public class WebController {
 
     private static final Map<String, String> HIGHLIGHT_LANGUAGE_MAP;
 
+    private static final int UTF8_VALIDATION_BUFFER_SIZE = 65536; // 64 KB
     private static final int MAX_INLINE_PREVIEW_BYTES = 1_048_576; // 1 MB
 
     // Branch names: letters/digits/dash/underscore/dot/slash; no ".." or "//".
@@ -202,14 +204,32 @@ public class WebController {
             }
             model.addAttribute("backUrl", backUrl.toString());
 
+            // Sidebar: load files in the same directory as the viewed file
+            try {
+                List<GitRepositoryService.FileInfo> sidebarFiles =
+                        gitRepositoryService.getFileList(repoDir, branch, parent.isEmpty() ? null : parent);
+                model.addAttribute("sidebarFiles", sidebarFiles);
+            } catch (Exception e) {
+                logger.debug("Could not load sidebar files for {} in dir '{}'", normalizedName, parent);
+                model.addAttribute("sidebarFiles", Collections.emptyList());
+            }
+            model.addAttribute("sidebarDirPath", parent);
+            model.addAttribute("sidebarParentPath", getParentPath(parent));
+
             if (inlinePreview) {
                 if ("markdown".equals(previewType)) {
-                    String markdown = new String(content, StandardCharsets.UTF_8);
+                    Charset charset = detectCharset(content);
+                    byte[] textBytes = stripBom(content, charset);
+                    String markdown = new String(textBytes, charset);
                     Node document = MARKDOWN_PARSER.parse(markdown);
                     String html = MARKDOWN_RENDERER.render(document);
                     model.addAttribute("markdownHtml", html);
+                    model.addAttribute("detectedCharset", charset.name());
                 } else if ("text".equals(previewType)) {
-                    model.addAttribute("textContent", new String(content, StandardCharsets.UTF_8));
+                    Charset charset = detectCharset(content);
+                    byte[] textBytes = stripBom(content, charset);
+                    model.addAttribute("textContent", new String(textBytes, charset));
+                    model.addAttribute("detectedCharset", charset.name());
                 } else if ("image".equals(previewType)) {
                     model.addAttribute("imageData", "data:" + (mimeType != null ? mimeType : "image/*") + ";base64," + java.util.Base64.getEncoder().encodeToString(content));
                 } else if ("pdf".equals(previewType)) {
@@ -282,6 +302,97 @@ public class WebController {
             logger.error("Error serving file {} from repo {}", path, repoName, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    /**
+     * Detect the character set of raw text-file bytes.
+     * Checks BOM markers, validates as UTF-8, falls back to GBK (for CJK content),
+     * and finally to ISO-8859-1 (lossless 8-bit fallback).
+     */
+    private Charset detectCharset(byte[] content) {
+        if (content == null || content.length == 0) return StandardCharsets.UTF_8;
+
+        // UTF-8 BOM: EF BB BF
+        if (content.length >= 3
+                && (content[0] & 0xFF) == 0xEF
+                && (content[1] & 0xFF) == 0xBB
+                && (content[2] & 0xFF) == 0xBF) {
+            return StandardCharsets.UTF_8;
+        }
+        // UTF-16 BE BOM: FE FF
+        if (content.length >= 2
+                && (content[0] & 0xFF) == 0xFE
+                && (content[1] & 0xFF) == 0xFF) {
+            return StandardCharsets.UTF_16BE;
+        }
+        // UTF-16 LE BOM: FF FE
+        if (content.length >= 2
+                && (content[0] & 0xFF) == 0xFF
+                && (content[1] & 0xFF) == 0xFE) {
+            return StandardCharsets.UTF_16LE;
+        }
+
+        // Validate as strict UTF-8
+        if (isValidUtf8Bytes(content)) {
+            return StandardCharsets.UTF_8;
+        }
+
+        // Fall back to GBK (common Chinese/CJK encoding)
+        try {
+            return Charset.forName("GBK");
+        } catch (Exception e) {
+            logger.debug("GBK charset not available, falling back to ISO-8859-1: {}", e.getMessage());
+        }
+        // Last resort: ISO-8859-1 (lossless, renders all 8-bit bytes)
+        return StandardCharsets.ISO_8859_1;
+    }
+
+    /**
+     * Strip the BOM (byte-order mark) from the beginning of content, if present.
+     */
+    private byte[] stripBom(byte[] content, Charset charset) {
+        if (content == null || content.length == 0) return content;
+        if (charset == StandardCharsets.UTF_8 && content.length >= 3
+                && (content[0] & 0xFF) == 0xEF
+                && (content[1] & 0xFF) == 0xBB
+                && (content[2] & 0xFF) == 0xBF) {
+            return Arrays.copyOfRange(content, 3, content.length);
+        }
+        if ((charset == StandardCharsets.UTF_16BE || charset == StandardCharsets.UTF_16LE)
+                && content.length >= 2) {
+            return Arrays.copyOfRange(content, 2, content.length);
+        }
+        return content;
+    }
+
+    /**
+     * Return true when the bytes constitute a valid UTF-8 sequence.
+     * Only checks the first 64 KB for performance.
+     */
+    private boolean isValidUtf8Bytes(byte[] bytes) {
+        int length = Math.min(bytes.length, UTF8_VALIDATION_BUFFER_SIZE);
+        int i = 0;
+        while (i < length) {
+            int b = bytes[i] & 0xFF;
+            int seqLen;
+            if (b < 0x80) {
+                seqLen = 1;
+            } else if ((b & 0xE0) == 0xC0 && b >= 0xC2) {
+                seqLen = 2;
+            } else if ((b & 0xF0) == 0xE0) {
+                seqLen = 3;
+            } else if ((b & 0xF8) == 0xF0 && b <= 0xF4) {
+                seqLen = 4;
+            } else {
+                return false;
+            }
+            for (int j = 1; j < seqLen; j++) {
+                if (i + j >= length) return false;
+                if ((bytes[i + j] & 0xC0) != 0x80) return false;
+            }
+            i += seqLen;
+        }
+        return true;
     }
 
     private String determinePreviewType(String fileName, String mimeType) {

@@ -399,7 +399,7 @@ git push -u origin main'">Push commands</pre>
                         main
                     </option>
                 </select>
-                <span th:if="${branches.size() > 0}" th:text="${branches.size()} + ' ' + #messages.msg('detail.branches.tab')">1 branch total</span>
+                <span th:if="${branches.size() > 0}" th:text="|${branches.size()} ${#messages.msg('detail.branches.tab')}|">1 branch total</span>
                 <form th:action="@{|/admin/repo/${repoName}/branch|}" method="post" style="display:flex; gap:0.5rem; align-items:center;">
                     <input type="hidden" name="fromBranch" th:value="${currentBranch}" />
                     <input type="text" name="newBranch" th:placeholder="#{detail.branch}" style="padding:0.3rem;" />
