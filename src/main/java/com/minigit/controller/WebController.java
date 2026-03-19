@@ -253,6 +253,36 @@ public class WebController {
     }
 
     /**
+     * Commit detail - shows commit metadata and list of changed files.
+     */
+    @GetMapping("/admin/repo/{name}/commit/{commitId}")
+    public String commitDetail(@PathVariable String name,
+                               @PathVariable String commitId,
+                               Model model) {
+        try {
+            String normalizedName = repositoryService.normalizeRepositoryName(name);
+            if (!repositoryService.repositoryExists(normalizedName)) {
+                model.addAttribute("error", getMessage("repo.not.found", name));
+                return "error";
+            }
+            File repoDir = repositoryService.getRepositoryPath(normalizedName);
+            GitRepositoryService.CommitDetail detail = gitRepositoryService.getCommitDetail(repoDir, commitId);
+            model.addAttribute("repoName", normalizedName);
+            model.addAttribute("commitDetail", detail);
+            model.addAttribute("commitId", commitId);
+            return "admin/commit-detail";
+        } catch (IllegalArgumentException e) {
+            logger.warn("Commit detail failed for repo {} commit {}: {}", name, commitId, e.getMessage());
+            model.addAttribute("error", e.getMessage());
+            return "error";
+        } catch (Exception e) {
+            logger.error("Unexpected error loading commit detail for repo {} commit {}", name, commitId, e);
+            model.addAttribute("error", "Error loading commit detail: " + e.getMessage());
+            return "error";
+        }
+    }
+
+    /**
      * Raw file content.
      */
     @GetMapping("/admin/repo/{name}/file/raw")

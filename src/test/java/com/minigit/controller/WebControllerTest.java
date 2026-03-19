@@ -191,4 +191,67 @@ class WebControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/repo/myrepo"));
     }
+
+    // --- GET /admin/repo/{name}/commit/{commitId} ---
+
+    @Test
+    @WithMockUser
+    void commitDetailAllowsAuthenticatedAccess() throws Exception {
+        mockMvc.perform(get("/admin/repo/myrepo/commit/abc12345"))
+                .andExpect(status().isOk()); // authenticated via @WithMockUser
+    }
+
+    @Test
+    @WithMockUser
+    void commitDetailReturnsCommitDetailView() throws Exception {
+        when(repositoryService.normalizeRepositoryName("myrepo")).thenReturn("myrepo.git");
+        when(repositoryService.repositoryExists("myrepo.git")).thenReturn(true);
+        when(repositoryService.getRepositoryPath("myrepo.git")).thenReturn(new File("/tmp/repos/myrepo.git"));
+
+        GitRepositoryService.CommitInfo info = new GitRepositoryService.CommitInfo();
+        info.setId("abc1234567890000000000000000000000000000");
+        info.setShortId("abc12345");
+        info.setMessage("Initial commit");
+        info.setAuthor("Alice");
+        info.setEmail("alice@example.com");
+        info.setDateFormatted("2025-01-01 10:00:00");
+
+        GitRepositoryService.CommitDetail detail = new GitRepositoryService.CommitDetail();
+        detail.setCommit(info);
+        detail.setChangedFiles(Collections.emptyList());
+
+        when(gitRepositoryService.getCommitDetail(any(File.class), eq("abc12345"))).thenReturn(detail);
+
+        mockMvc.perform(get("/admin/repo/myrepo/commit/abc12345"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/commit-detail"))
+                .andExpect(model().attributeExists("commitDetail"))
+                .andExpect(model().attribute("repoName", "myrepo.git"))
+                .andExpect(model().attribute("commitId", "abc12345"));
+    }
+
+    @Test
+    @WithMockUser
+    void commitDetailReturnsErrorWhenRepoNotFound() throws Exception {
+        when(repositoryService.normalizeRepositoryName("missing")).thenReturn("missing.git");
+        when(repositoryService.repositoryExists("missing.git")).thenReturn(false);
+
+        mockMvc.perform(get("/admin/repo/missing/commit/abc12345"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("error"));
+    }
+
+    @Test
+    @WithMockUser
+    void commitDetailReturnsErrorWhenCommitNotFound() throws Exception {
+        when(repositoryService.normalizeRepositoryName("myrepo")).thenReturn("myrepo.git");
+        when(repositoryService.repositoryExists("myrepo.git")).thenReturn(true);
+        when(repositoryService.getRepositoryPath("myrepo.git")).thenReturn(new File("/tmp/repos/myrepo.git"));
+        when(gitRepositoryService.getCommitDetail(any(File.class), eq("deadbeef")))
+                .thenThrow(new IllegalArgumentException("Commit not found: deadbeef"));
+
+        mockMvc.perform(get("/admin/repo/myrepo/commit/deadbeef"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("error"));
+    }
 }
