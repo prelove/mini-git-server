@@ -473,13 +473,20 @@ git push -u origin main'">Push commands</pre>
                 <div th:if="${commits != null and !commits.empty}" class="commit-list">
                     <div th:each="commit : ${commits}" class="commit-item">
                         <div class="commit-info">
-                            <div class="commit-message" th:text="${commit.message}">Initial commit</div>
+                            <div class="commit-message">
+                                <a th:href="@{|/admin/repo/${repoName}/commit/${commit.id}|}"
+                                   style="color: inherit; text-decoration: none;"
+                                   th:text="${commit.message}">Initial commit</a>
+                            </div>
                             <div class="commit-meta">
                                 <span th:text="${commit.author}">Author</span> · 
                                 <span th:text="${commit.dateFormatted}">2025-08-29 12:00:00</span>
                             </div>
                         </div>
-                        <div class="commit-id" th:text="${commit.shortId}">abcd1234</div>
+                        <a th:href="@{|/admin/repo/${repoName}/commit/${commit.id}|}"
+                           class="commit-id"
+                           style="text-decoration: none; color: #0d6efd;"
+                           th:text="${commit.shortId}">abcd1234</a>
                     </div>
                 </div>
                 <div th:if="${commits == null or commits.empty}" style="text-align: center; padding: 2rem; color: #666;">

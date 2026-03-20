@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${repoName} + ' - ' + #{commit.detail.title}">Commit Detail - Mini Git Server</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f6f8fa;
+            color: #24292f;
+            line-height: 1.6;
+        }
+        .top-bar {
+            background: #2c3e50;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .top-bar a { color: #cdd9e5; text-decoration: none; font-size: 0.9rem; }
+        .top-bar a:hover { color: #fff; }
+        .top-bar-left { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+        .top-bar-left .repo-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1.2rem; }
+
+        /* Commit metadata card */
+        .commit-card {
+            background: #fff;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .commit-card h2 {
+            font-size: 1.1rem;
+            color: #24292f;
+            margin-bottom: 0.75rem;
+            word-break: break-word;
+        }
+        .commit-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            font-size: 0.85rem;
+            color: #57606a;
+        }
+        .commit-meta-row .meta-item { display: flex; align-items: center; gap: 0.3rem; }
+        .commit-sha {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            background: #f6f8fa;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.82rem;
+            color: #24292f;
+            user-select: all;
+        }
+
+        /* Changed files list */
+        .files-card {
+            background: #fff;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+        }
+        .files-card-header {
+            background: #f6f8fa;
+            border-bottom: 1px solid #d0d7de;
+            padding: 0.7rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #24292f;
+        }
+        .file-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1.2rem;
+            border-bottom: 1px solid #f0f2f4;
+            font-size: 0.875rem;
+        }
+        .file-row:last-child { border-bottom: none; }
+        .file-row:hover { background: #f6f8fa; }
+        .change-badge {
+            display: inline-block;
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            flex-shrink: 0;
+            min-width: 52px;
+            text-align: center;
+        }
+        .badge-add    { background: #dafbe1; color: #1a7f37; }
+        .badge-modify { background: #fff8c5; color: #9a6700; }
+        .badge-delete { background: #ffebe9; color: #cf222e; }
+        .badge-rename { background: #ddf4ff; color: #0969da; }
+        .badge-copy   { background: #f3eff7; color: #6639ba; }
+        .file-path {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.83rem;
+            word-break: break-all;
+            flex: 1;
+        }
+        .file-path a { color: #0d6efd; text-decoration: none; }
+        .file-path a:hover { text-decoration: underline; }
+        .old-path {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.78rem;
+            color: #57606a;
+        }
+        .empty-notice {
+            padding: 2rem;
+            text-align: center;
+            color: #57606a;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+    <div class="top-bar-left">
+        <a href="/admin">Mini Git Server</a>
+        <span style="color:#6e7681;">›</span>
+        <a th:href="@{|/admin/repo/${repoName}|}" class="repo-name" th:text="${repoName}">repo</a>
+        <span style="color:#6e7681;">›</span>
+        <span th:text="#{commit.detail.title}">Commit</span>
+    </div>
+    <a th:href="@{|/admin/repo/${repoName}|}">← <span th:text="#{ui.back.repo}">Back to Repository</span></a>
+</div>
+
+<div class="container">
+
+    <!-- Commit metadata -->
+    <div class="commit-card">
+        <h2 th:text="${commitDetail.commit.message}">Commit message</h2>
+        <div class="commit-meta-row">
+            <div class="meta-item">
+                👤 <span th:text="${commitDetail.commit.author}">Author</span>
+                <span th:if="${commitDetail.commit.email}" style="color:#8e96a3;"
+                      th:text="|&lt;${commitDetail.commit.email}&gt;|"></span>
+            </div>
+            <div class="meta-item">
+                🕐 <span th:text="${commitDetail.commit.dateFormatted}">date</span>
+            </div>
+            <div class="meta-item">
+                🔑 <span class="commit-sha" th:text="${commitDetail.commit.id}">sha</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Changed files -->
+    <div class="files-card">
+        <div class="files-card-header">
+            📝 <span th:text="#{commit.detail.changed.files}">Changed files</span>
+            <span style="font-weight:400; color:#57606a; margin-left:0.4rem;"
+                  th:text="${commitDetail.changedFiles != null ? commitDetail.changedFiles.size() : 0}">0</span>
+        </div>
+        <div th:if="${commitDetail.changedFiles != null and !commitDetail.changedFiles.empty}">
+            <div th:each="file : ${commitDetail.changedFiles}" class="file-row">
+                <!-- Change type badge -->
+                <span th:switch="${file.changeType}">
+                    <span th:case="'ADD'"    class="change-badge badge-add"   >ADD</span>
+                    <span th:case="'MODIFY'" class="change-badge badge-modify">MOD</span>
+                    <span th:case="'DELETE'" class="change-badge badge-delete">DEL</span>
+                    <span th:case="'RENAME'" class="change-badge badge-rename">REN</span>
+                    <span th:case="'COPY'"   class="change-badge badge-copy"  >CPY</span>
+                    <span th:case="*"        class="change-badge badge-modify" th:text="${file.changeType}">?</span>
+                </span>
+
+                <!-- File path and link -->
+                <div style="flex:1; min-width:0;">
+                    <div class="file-path">
+                        <!-- Link only for non-deleted files so the file can be viewed at this commit state -->
+                        <a th:if="${file.changeType != 'DELETE'}"
+                           th:href="@{|/admin/repo/${repoName}/file?path=${file.path}&branch=${commitId}|}"
+                           target="_blank"
+                           rel="noopener"
+                           th:text="${file.path}">path/to/file.java</a>
+                        <span th:if="${file.changeType == 'DELETE'}"
+                              style="color:#57606a; text-decoration:line-through;"
+                              th:text="${file.path}">path/to/file.java</span>
+                    </div>
+                    <!-- For renames/copies: show old path -->
+                    <div th:if="${file.oldPath != null}" class="old-path">
+                        ← <span th:text="${file.oldPath}">old/path.java</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div th:if="${commitDetail.changedFiles == null or commitDetail.changedFiles.empty}" class="empty-notice">
+            <span th:text="#{commit.detail.no.changes}">No file changes in this commit.</span>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

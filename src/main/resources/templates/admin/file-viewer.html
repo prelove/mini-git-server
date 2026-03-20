@@ -6,6 +6,7 @@
     <title th:text="${fileName != null ? fileName : #messages.msg('file.preview')} + ' - Mini Git Server'">File Preview - Mini Git Server</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jitOffice/jit-viewer-sdk@ca7fb73/cdn/jit-viewer.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -420,6 +421,9 @@
             <!-- ── Office documents (client-side rendering) ── -->
             <div th:if="${clientRenderOffice}">
                 <div id="office-status" class="office-progress" th:text="#{file.office.loading}">Loading…</div>
+                <!-- JitViewer SDK container (primary renderer) -->
+                <div id="jit-viewer-container" style="display:none; width:100%; min-height:600px;"></div>
+                <!-- Legacy containers (fallback when JitViewer is unavailable) -->
                 <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper" style="display:none;"></div>
                 <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container" style="display:none;"></div>
                 <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper" style="display:none;"></div>
@@ -464,6 +468,8 @@
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxjs@2.12.0/dist/pptxjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- JitViewer SDK: unified multi-format document viewer -->
+<script src="https://cdn.jsdelivr.net/gh/jitOffice/jit-viewer-sdk@ca7fb73/cdn/jit-viewer.min.js"></script>
 
 <script th:inline="javascript">
     // ── Syntax highlighting ──
@@ -489,6 +495,7 @@
     var clientRenderOffice = /*[[${clientRenderOffice}]]*/ false;
     var rawUrl             = /*[[${rawUrl}]]*/ '';
     var previewType        = /*[[${previewType}]]*/ 'binary';
+    var fileName           = /*[[${fileName}]]*/ '';
 
     function showFallback() {
         var s = document.getElementById('office-status');
@@ -505,52 +512,77 @@
     }
 
     if (clientRenderOffice && rawUrl) {
+        // ── Primary: JitViewer SDK ──
+        if (window.JitViewer && typeof window.JitViewer.createViewer === 'function') {
+            try {
+                var viewer = window.JitViewer.createViewer({
+                    file: rawUrl,
+                    filename: fileName,
+                    toolbar: true,
+                    theme: 'light',
+                    onError: function () {
+                        console.warn('[JitViewer] Rendering failed, switching to legacy library fallback.');
+                        renderWithLegacyLibs();
+                    }
+                });
+                viewer.mount('#jit-viewer-container');
+                showContainer('jit-viewer-container');
+            } catch (e) {
+                console.warn('[JitViewer] SDK threw an error, switching to legacy library fallback:', e);
+                renderWithLegacyLibs();
+            }
+        } else {
+            // ── Fallback: existing per-format libraries ──
+            renderWithLegacyLibs();
+        }
+    } else if (clientRenderOffice) {
+        showFallback();
+    }
+
+    function renderWithLegacyLibs() {
         var libOk = (previewType === 'word'       && !!window.docx && typeof window.docx.renderAsync === 'function') ||
                     (previewType === 'excel'      && !!window.XLSX && typeof window.XLSX.read === 'function')         ||
                     (previewType === 'powerpoint' && !!window.PPTX && typeof window.PPTX.load === 'function');
 
-        if (!libOk) { showFallback(); }
-        else {
-            fetch(rawUrl)
-                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
-                .then(function (buf) {
-                    if (!buf || buf.byteLength === 0) throw new Error('Empty file');
-                    if (previewType === 'word') {
-                        window.docx.renderAsync(buf, document.getElementById('docx-container'), null, { experimental: true })
-                            .then(function () { showContainer('docx-container'); })
-                            .catch(showFallback);
-                    } else if (previewType === 'excel') {
-                        try {
-                            var wb = window.XLSX.read(buf, { type: 'array', cellFormula: false, cellHTML: false });
-                            var con = document.getElementById('excel-container');
-                            con.innerHTML = '';
-                            var ok = false;
-                            wb.SheetNames.forEach(function (name, i) {
-                                var sh = wb.Sheets[name];
-                                if (sh) {
-                                    var html = window.XLSX.utils.sheet_to_html(sh, {
-                                        header: '<h4>Sheet ' + (i + 1) + ': ' + name + '</h4>'
-                                    });
-                                    var sec = document.createElement('section');
-                                    sec.innerHTML = html;
-                                    con.appendChild(sec);
-                                    ok = true;
-                                }
-                            });
-                            if (ok) showContainer('excel-container'); else throw new Error('No sheets');
-                        } catch (e) { showFallback(); }
-                    } else if (previewType === 'powerpoint') {
-                        var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-                        var url  = URL.createObjectURL(blob);
-                        window.PPTX.load(url, '#ppt-container')
-                            .then(function () { showContainer('ppt-container'); URL.revokeObjectURL(url); })
-                            .catch(function () { URL.revokeObjectURL(url); showFallback(); });
-                    }
-                })
-                .catch(showFallback);
-        }
-    } else if (clientRenderOffice) {
-        showFallback();
+        if (!libOk) { showFallback(); return; }
+
+        fetch(rawUrl)
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+            .then(function (buf) {
+                if (!buf || buf.byteLength === 0) throw new Error('Empty file');
+                if (previewType === 'word') {
+                    window.docx.renderAsync(buf, document.getElementById('docx-container'), null, { experimental: true })
+                        .then(function () { showContainer('docx-container'); })
+                        .catch(showFallback);
+                } else if (previewType === 'excel') {
+                    try {
+                        var wb = window.XLSX.read(buf, { type: 'array', cellFormula: false, cellHTML: false });
+                        var con = document.getElementById('excel-container');
+                        con.innerHTML = '';
+                        var ok = false;
+                        wb.SheetNames.forEach(function (name, i) {
+                            var sh = wb.Sheets[name];
+                            if (sh) {
+                                var html = window.XLSX.utils.sheet_to_html(sh, {
+                                    header: '<h4>Sheet ' + (i + 1) + ': ' + name + '</h4>'
+                                });
+                                var sec = document.createElement('section');
+                                sec.innerHTML = html;
+                                con.appendChild(sec);
+                                ok = true;
+                            }
+                        });
+                        if (ok) showContainer('excel-container'); else throw new Error('No sheets');
+                    } catch (e) { showFallback(); }
+                } else if (previewType === 'powerpoint') {
+                    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+                    var url  = URL.createObjectURL(blob);
+                    window.PPTX.load(url, '#ppt-container')
+                        .then(function () { showContainer('ppt-container'); URL.revokeObjectURL(url); })
+                        .catch(function () { URL.revokeObjectURL(url); showFallback(); });
+                }
+            })
+            .catch(showFallback);
     }
 </script>
 </body>

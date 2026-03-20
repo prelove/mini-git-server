@@ -3,15 +3,21 @@ package com.minigit.service;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.ListBranchCommand;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -97,6 +103,29 @@ public class GitRepositoryService {
         public void setLastCommitDate(Date lastCommitDate) { this.lastCommitDate = lastCommitDate; }
     }
 
+    public static class ChangedFile {
+        private String path;
+        private String oldPath;
+        private String changeType; // "ADD", "MODIFY", "DELETE", "RENAME", "COPY"
+
+        public String getPath() { return path; }
+        public void setPath(String path) { this.path = path; }
+        public String getOldPath() { return oldPath; }
+        public void setOldPath(String oldPath) { this.oldPath = oldPath; }
+        public String getChangeType() { return changeType; }
+        public void setChangeType(String changeType) { this.changeType = changeType; }
+    }
+
+    public static class CommitDetail {
+        private CommitInfo commit;
+        private List<ChangedFile> changedFiles;
+
+        public CommitInfo getCommit() { return commit; }
+        public void setCommit(CommitInfo commit) { this.commit = commit; }
+        public List<ChangedFile> getChangedFiles() { return changedFiles; }
+        public void setChangedFiles(List<ChangedFile> changedFiles) { this.changedFiles = changedFiles; }
+    }
+
     // -------- Public API --------
 
     public FileInfo getFileInfo(File repoDir, String branchName, String path) throws Exception {
@@ -180,6 +209,72 @@ public class GitRepositoryService {
                     ObjectLoader loader = repository.open(treeWalk.getObjectId(0));
                     return loader.getBytes();
                 }
+            }
+        }
+    }
+
+    public CommitDetail getCommitDetail(File repoDir, String commitId) throws Exception {
+        if (commitId == null || commitId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Commit ID must not be empty");
+        }
+        try (Repository repository = new FileRepositoryBuilder()
+                .setGitDir(repoDir)
+                .setMustExist(true)
+                .build()) {
+
+            ObjectId commitObjectId = repository.resolve(commitId);
+            if (commitObjectId == null) {
+                throw new IllegalArgumentException("Commit not found: " + commitId);
+            }
+
+            try (RevWalk revWalk = new RevWalk(repository)) {
+                RevCommit commit = revWalk.parseCommit(commitObjectId);
+                CommitDetail detail = new CommitDetail();
+                detail.setCommit(toCommitInfo(commit));
+
+                List<ChangedFile> changedFiles = new ArrayList<>();
+                try (DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
+                    diffFormatter.setRepository(repository);
+                    diffFormatter.setDetectRenames(true);
+
+                    List<DiffEntry> diffs;
+                    if (commit.getParentCount() > 0) {
+                        RevCommit parent = revWalk.parseCommit(commit.getParent(0).getId());
+                        try (ObjectReader reader = repository.newObjectReader()) {
+                            CanonicalTreeParser oldTree = new CanonicalTreeParser();
+                            oldTree.reset(reader, parent.getTree());
+                            CanonicalTreeParser newTree = new CanonicalTreeParser();
+                            newTree.reset(reader, commit.getTree());
+                            diffs = diffFormatter.scan(oldTree, newTree);
+                        }
+                    } else {
+                        // Initial commit: diff against empty tree
+                        try (ObjectReader reader = repository.newObjectReader()) {
+                            CanonicalTreeParser newTree = new CanonicalTreeParser();
+                            newTree.reset(reader, commit.getTree());
+                            diffs = diffFormatter.scan(new EmptyTreeIterator(), newTree);
+                        }
+                    }
+
+                    for (DiffEntry diff : diffs) {
+                        ChangedFile cf = new ChangedFile();
+                        cf.setChangeType(diff.getChangeType().name());
+                        if (diff.getChangeType() == DiffEntry.ChangeType.DELETE) {
+                            cf.setPath(diff.getOldPath());
+                            cf.setOldPath(null);
+                        } else if (diff.getChangeType() == DiffEntry.ChangeType.RENAME
+                                || diff.getChangeType() == DiffEntry.ChangeType.COPY) {
+                            cf.setPath(diff.getNewPath());
+                            cf.setOldPath(diff.getOldPath());
+                        } else {
+                            cf.setPath(diff.getNewPath());
+                            cf.setOldPath(null);
+                        }
+                        changedFiles.add(cf);
+                    }
+                }
+                detail.setChangedFiles(changedFiles);
+                return detail;
             }
         }
     }
