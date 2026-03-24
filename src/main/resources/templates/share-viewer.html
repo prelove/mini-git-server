@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${fileName != null ? fileName + ' - 分享预览' : '分享预览'}">分享预览</title>
+    <link rel="stylesheet" href="/vendor/highlight.github.min.css">
+    <link rel="stylesheet" href="/vendor/docx-preview.min.css">
+    <link rel="stylesheet" href="/vendor/jit-viewer.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f6f8fa;
+            color: #24292f;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top bar ── */
+        .top-bar {
+            background: #1f2937;
+            color: #fff;
+            padding: 0.65rem 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-shrink: 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        }
+        .top-bar-left { display: flex; align-items: center; gap: 0.6rem; overflow: hidden; }
+        .top-bar-left .file-name {
+            font-weight: 600; font-size: 1rem; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; max-width: 40vw;
+        }
+        .share-badge {
+            font-size: 0.72rem; background: #374151; color: #9ca3af;
+            padding: 0.15rem 0.55rem; border-radius: 20px; white-space: nowrap;
+        }
+        .expiry-badge {
+            font-size: 0.72rem; background: #92400e; color: #fde68a;
+            padding: 0.15rem 0.55rem; border-radius: 20px; white-space: nowrap;
+        }
+        .top-bar-right { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            padding: 0.3rem 0.75rem; border-radius: 6px; text-decoration: none;
+            font-size: 0.82rem; cursor: pointer; white-space: nowrap; border: none;
+        }
+        .btn-ghost {
+            background: rgba(255,255,255,.1); color: #e5e7eb; border: 1px solid rgba(255,255,255,.15);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,.2); color: #fff; }
+        .btn-primary { background: #2563eb; color: #fff; border: 1px solid #1d4ed8; }
+        .btn-primary:hover { background: #1d4ed8; }
+
+        /* ── Main content ── */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .preview-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem 1.5rem 2rem;
+        }
+        body.fullscreen .top-bar { display: none; }
+        body.fullscreen .main-content { position: fixed; inset: 0; z-index: 500; background: #fff; }
+        body.fullscreen .preview-area { padding: 1rem; }
+
+        /* ── File info bar ── */
+        .file-info-bar {
+            background: #fff;
+            border-bottom: 1px solid #d0d7de;
+            padding: 0.5rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            font-size: 0.82rem;
+            color: #57606a;
+            flex-shrink: 0;
+        }
+        .file-info-bar .info-item { display: flex; align-items: center; gap: 0.3rem; }
+
+        /* ── Code / text ── */
+        .code-wrap { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden; }
+        pre { margin: 0; padding: 1rem; overflow-x: auto; font-size: 0.88rem; line-height: 1.6; background: #fff; }
+        pre code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+
+        /* ── Markdown ── */
+        .markdown-body {
+            background: #fff; border: 1px solid #d0d7de; border-radius: 6px;
+            padding: 1.5rem 2rem; line-height: 1.7; font-size: 1rem;
+        }
+        .markdown-body h1, .markdown-body h2 { border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; margin: 1.2rem 0 0.6rem; }
+        .markdown-body h3, .markdown-body h4 { margin: 1rem 0 0.5rem; }
+        .markdown-body p { margin: 0.6rem 0; }
+        .markdown-body pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; overflow-x: auto; margin: 0.75rem 0; }
+        .markdown-body code { background: #f6f8fa; border-radius: 3px; padding: 0.15em 0.4em; font-size: 0.88em; font-family: 'SFMono-Regular', Consolas, monospace; }
+        .markdown-body pre code { background: none; padding: 0; }
+        .markdown-body blockquote { border-left: 4px solid #d0d7de; padding-left: 1rem; color: #57606a; margin: 0.75rem 0; }
+        .markdown-body table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
+        .markdown-body th, .markdown-body td { border: 1px solid #d0d7de; padding: 0.4rem 0.8rem; }
+        .markdown-body th { background: #f6f8fa; }
+        .markdown-body a { color: #0969da; }
+        .markdown-body ul, .markdown-body ol { padding-left: 2rem; margin: 0.5rem 0; }
+        .markdown-body img { max-width: 100%; }
+        .markdown-body hr { border: none; border-top: 1px solid #d0d7de; margin: 1.5rem 0; }
+
+        /* ── Image ── */
+        .image-wrap { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; text-align: center; }
+        .image-wrap img { max-width: 100%; border-radius: 4px; }
+
+        /* ── PDF ── */
+        .pdf-frame { width: 100%; height: 80vh; border: 1px solid #d0d7de; border-radius: 6px; }
+
+        /* ── Office ── */
+        .docx-wrapper { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; }
+        .excel-container { display: flex; flex-direction: column; gap: 1rem; }
+        .excel-container section { overflow-x: auto; background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.5rem; }
+        .excel-container table { border-collapse: collapse; width: auto; min-width: 100%; background: #fff; }
+        .excel-container th, .excel-container td { border: 1px solid #d0d7de; padding: 0.35rem 0.6rem; font-size: 0.88rem; white-space: nowrap; }
+        .excel-container th { background: #f6f8fa; }
+        .excel-container h4 { padding: 0.5rem 0; font-size: 0.9rem; color: #57606a; }
+        .office-progress { display: flex; align-items: center; justify-content: center; min-height: 240px; color: #57606a; font-size: 1rem; }
+        #jit-viewer-container { width: 100%; min-height: 600px; }
+
+        /* ── Mermaid ── */
+        .mermaid { text-align: center; margin: 0.75rem 0; }
+        .mermaid svg { max-width: 100%; }
+
+        /* ── Alerts ── */
+        .alert { padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+        .alert-warn { background: #fff8c5; border: 1px solid #d4a72c; color: #7d4e00; }
+        .alert-info { background: #ddf4ff; border: 1px solid #54aeff; color: #0550ae; }
+        .alert-error { background: #ffebe9; border: 1px solid #f85149; color: #82071e; }
+
+        /* ── Unsupported / fallback ── */
+        .unsupported-box {
+            background: #fff; border: 1px solid #d0d7de; border-radius: 6px;
+            padding: 2rem; text-align: center; color: #57606a;
+        }
+        .unsupported-box h3 { margin-bottom: 0.75rem; color: #24292f; }
+        .unsupported-box .action-row { margin-top: 1.25rem; display: flex; justify-content: center; gap: 0.75rem; }
+
+        /* ── Password form ── */
+        .pw-card {
+            max-width: 380px; margin: 4rem auto;
+            background: #fff; border: 1px solid #d0d7de; border-radius: 10px; padding: 2rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,.08); text-align: center;
+        }
+        .pw-card h2 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .pw-card p { font-size: 0.88rem; color: #57606a; margin-bottom: 1.25rem; }
+        .pw-card input[type=password] {
+            width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d0d7de; border-radius: 6px;
+            font-size: 0.95rem; margin-bottom: 0.75rem;
+        }
+        .pw-card input[type=password]:focus { outline: 2px solid #0969da; }
+        .pw-card .btn-primary { width: 100%; justify-content: center; padding: 0.5rem; font-size: 0.95rem; }
+        .error-msg { color: #d1242f; font-size: 0.83rem; margin-bottom: 0.5rem; }
+
+        /* ── Error page ── */
+        .error-card {
+            max-width: 440px; margin: 6rem auto; background: #fff;
+            border: 1px solid #d0d7de; border-radius: 10px; padding: 2.5rem; text-align: center;
+        }
+        .error-card .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .error-card h2 { margin-bottom: 0.5rem; }
+        .error-card p { color: #57606a; font-size: 0.9rem; }
+
+        @media (max-width: 640px) {
+            .preview-area { padding: 0.75rem; }
+            .top-bar-left .share-badge, .top-bar-left .expiry-badge { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Error state ── -->
+<div th:if="${shareError != null}" class="error-card">
+    <div class="icon">🔒</div>
+    <h2 th:text="${shareError == 'share.expired' ? '分享链接已过期' : '链接无效或已失效'}">链接无效</h2>
+    <p th:text="${shareError == 'share.expired' ? '此分享链接已超出有效期，无法访问。' : '此分享链接不存在、已被撤销或已失效。'}">
+        无法访问此分享链接。
+    </p>
+</div>
+
+<!-- ── Password prompt ── -->
+<div th:if="${requirePassword != null and requirePassword}" class="pw-card">
+    <div style="font-size:1.8rem; margin-bottom:0.5rem;">🔐</div>
+    <h2>需要访问密码</h2>
+    <p th:text="'文件: ' + ${fileName}">文件</p>
+    <div th:if="${passwordWrong != null and passwordWrong}" class="error-msg">密码错误，请重试。</div>
+    <form th:action="@{|/share/${token}|}" method="get">
+        <input type="password" name="pw" placeholder="请输入密码" autofocus autocomplete="current-password"/>
+        <button type="submit" class="btn btn-primary">🔓 确认访问</button>
+    </form>
+</div>
+
+<!-- ── Normal file preview (no error, no password required) ── -->
+<div th:if="${shareError == null and (requirePassword == null or !requirePassword)}">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <span>📄</span>
+            <span class="file-name" th:text="${fileName}">filename</span>
+            <span class="share-badge">🔗 分享文件</span>
+            <span th:if="${expiresAt != null}" class="expiry-badge"
+                  th:text="'⏱ 有效期至 ' + ${expiresAt}">有效期</span>
+        </div>
+        <div class="top-bar-right">
+            <button class="btn btn-ghost" onclick="toggleFullscreen()" id="fs-btn">⛶ 全屏</button>
+            <a th:href="${downloadUrl}" class="btn btn-primary">⬇ 下载</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- File info bar -->
+        <div class="file-info-bar">
+            <span class="info-item">📦 <span th:text="${fileSizeFormatted}">size</span></span>
+            <span th:if="${detectedCharset != null}" class="info-item">
+                🔤 <span th:text="${detectedCharset}">charset</span>
+            </span>
+            <span th:if="${filePath != null}" class="info-item">
+                📁 <span th:text="${filePath}">path</span>
+            </span>
+        </div>
+
+        <div class="preview-area">
+            <div th:if="${tooLargeForInline}" class="alert alert-warn">
+                文件超过 1 MB，已禁用内联预览，请直接下载查看。
+            </div>
+            <div th:if="${binaryDetected}" class="alert alert-warn">
+                文件包含二进制内容，无法按文本渲染。
+            </div>
+
+            <!-- ── Inline previews ── -->
+            <div th:if="${previewAvailable and inlinePreview}" th:switch="${previewType}">
+                <div th:case="'text'" class="code-wrap">
+                    <pre><code th:class="${highlightLanguage != null} ? 'hljs ' + highlightLanguage : 'hljs'" th:text="${textContent}"></code></pre>
+                </div>
+                <div th:case="'markdown'">
+                    <article class="markdown-body" th:utext="${markdownHtml}"></article>
+                </div>
+                <div th:case="'image'" class="image-wrap">
+                    <img th:src="${imageData}" alt="image preview"/>
+                </div>
+                <div th:case="'pdf'">
+                    <iframe th:src="${pdfData}" class="pdf-frame"></iframe>
+                </div>
+                <div th:case="*" class="unsupported-box">
+                    <p>不支持在线预览此文件类型。</p>
+                    <div class="action-row">
+                        <a th:href="${downloadUrl}" class="btn btn-primary">⬇ 下载文件</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Office documents (client-side rendering) ── -->
+            <div th:if="${clientRenderOffice}">
+                <div id="office-status" class="office-progress">正在加载 Office 文档预览...</div>
+                <div id="jit-viewer-container" style="display:none;"></div>
+                <div th:if="${previewType == 'word'}" id="docx-container" class="docx-wrapper" style="display:none;"></div>
+                <div th:if="${previewType == 'excel'}" id="excel-container" class="excel-container" style="display:none;"></div>
+                <div th:if="${previewType == 'powerpoint'}" id="ppt-container" class="docx-wrapper" style="display:none;"></div>
+                <div id="office-fallback" style="display:none;" class="unsupported-box">
+                    <h3>📄 <span th:text="${fileName}">文件</span></h3>
+                    <p>Office 文档预览失败，请直接下载查看。</p>
+                    <div class="action-row">
+                        <a th:href="${downloadUrl}" class="btn btn-primary">📥 下载文件</a>
+                        <a th:href="${rawUrl}" class="btn btn-ghost" target="_blank">🔍 查看原始内容</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── No preview available ── -->
+            <div th:if="${!previewAvailable and !tooLargeForInline and !binaryDetected}" class="unsupported-box">
+                <h3>📄 <span th:text="${fileName}">file</span></h3>
+                <p>此文件类型不支持在线预览。</p>
+                <div class="action-row">
+                    <a th:href="${downloadUrl}" class="btn btn-primary">⬇ 下载文件</a>
+                </div>
+            </div>
+        </div><!-- /preview-area -->
+    </div><!-- /main-content -->
+</div>
+
+<script src="/vendor/highlight.common.min.js"></script>
+<script src="/vendor/docx-preview.min.js"></script>
+<script src="/vendor/xlsx.full.min.js"></script>
+<script src="/vendor/jszip.min.js"></script>
+<script src="/vendor/pptxjs.min.js"></script>
+<script src="/vendor/mermaid.min.js"></script>
+<script src="/vendor/jit-viewer.min.js"></script>
+
+<script th:inline="javascript">
+    // ── Syntax highlighting ──
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre code.hljs').forEach(function (block) {
+            if (window.hljs) window.hljs.highlightElement(block);
+        });
+        document.querySelectorAll('.markdown-body pre code.language-mermaid').forEach(function (el) {
+            var pre = el.parentElement;
+            var div = document.createElement('div');
+            div.className = 'mermaid';
+            div.textContent = el.textContent;
+            pre.parentNode.replaceChild(div, pre);
+        });
+        if (window.mermaid) {
+            mermaid.initialize({ startOnLoad: true, securityLevel: 'strict' });
+        }
+    });
+
+    // ── Fullscreen ──
+    function toggleFullscreen() {
+        var body = document.body;
+        var btn = document.getElementById('fs-btn');
+        if (body.classList.contains('fullscreen')) {
+            body.classList.remove('fullscreen');
+            if (btn) btn.textContent = '⛶ 全屏';
+        } else {
+            body.classList.add('fullscreen');
+            if (btn) btn.textContent = '✕ 退出全屏';
+        }
+    }
+
+    // ── Office rendering ──
+    var clientRenderOffice = /*[[${clientRenderOffice}]]*/ false;
+    var rawUrl             = /*[[${rawUrl}]]*/ '';
+    var previewType        = /*[[${previewType}]]*/ 'binary';
+    var fileName           = /*[[${fileName}]]*/ '';
+
+    function showFallback() {
+        var s = document.getElementById('office-status');
+        var f = document.getElementById('office-fallback');
+        if (s) s.style.display = 'none';
+        if (f) f.style.display = 'block';
+    }
+
+    function showContainer(id) {
+        var s = document.getElementById('office-status');
+        var c = document.getElementById(id);
+        if (s) s.style.display = 'none';
+        if (c) c.style.display = c.classList.contains('excel-container') ? 'flex' : 'block';
+    }
+
+    if (clientRenderOffice && rawUrl) {
+        if (window.JitViewer && typeof window.JitViewer.createViewer === 'function') {
+            try {
+                var viewer = window.JitViewer.createViewer({
+                    file: rawUrl, filename: fileName, toolbar: true, theme: 'light',
+                    onError: function () { renderWithLegacyLibs(); }
+                });
+                viewer.mount('#jit-viewer-container');
+                showContainer('jit-viewer-container');
+            } catch (e) { renderWithLegacyLibs(); }
+        } else {
+            renderWithLegacyLibs();
+        }
+    } else if (clientRenderOffice) {
+        showFallback();
+    }
+
+    function renderWithLegacyLibs() {
+        var libOk = (previewType === 'word' && !!window.docx && typeof window.docx.renderAsync === 'function') ||
+                    (previewType === 'excel' && !!window.XLSX && typeof window.XLSX.read === 'function') ||
+                    (previewType === 'powerpoint' && !!window.PPTX && typeof window.PPTX.load === 'function');
+        if (!libOk) { showFallback(); return; }
+        fetch(rawUrl)
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+            .then(function (buf) {
+                if (!buf || buf.byteLength === 0) throw new Error('Empty');
+                if (previewType === 'word') {
+                    window.docx.renderAsync(buf, document.getElementById('docx-container'), null, { experimental: true })
+                        .then(function () { showContainer('docx-container'); }).catch(showFallback);
+                } else if (previewType === 'excel') {
+                    try {
+                        var wb = window.XLSX.read(buf, { type: 'array', cellFormula: false, cellHTML: false });
+                        var con = document.getElementById('excel-container');
+                        con.innerHTML = '';
+                        var ok = false;
+                        wb.SheetNames.forEach(function (name, i) {
+                            var sh = wb.Sheets[name];
+                            if (sh) {
+                                var html = window.XLSX.utils.sheet_to_html(sh, { header: '<h4>Sheet ' + (i + 1) + ': ' + name + '</h4>' });
+                                var sec = document.createElement('section');
+                                sec.innerHTML = html;
+                                con.appendChild(sec);
+                                ok = true;
+                            }
+                        });
+                        if (ok) showContainer('excel-container'); else throw new Error('No sheets');
+                    } catch (e) { showFallback(); }
+                } else if (previewType === 'powerpoint') {
+                    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+                    var url = URL.createObjectURL(blob);
+                    window.PPTX.load(url, '#ppt-container')
+                        .then(function () { showContainer('ppt-container'); URL.revokeObjectURL(url); })
+                        .catch(function () { URL.revokeObjectURL(url); showFallback(); });
+                }
+            }).catch(showFallback);
+    }
+</script>
+</body>
+</html>
