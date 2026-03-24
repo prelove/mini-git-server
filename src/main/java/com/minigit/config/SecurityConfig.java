@@ -33,7 +33,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
                 // 2) Authorization: /git/** requires auth; static resources and /login are public.
                 .authorizeRequests()
-                .antMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/", "/login").permitAll()
+                .antMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/", "/login", "/share/**", "/vendor/**").permitAll()
                 .antMatchers("/git/**").authenticated()
                 .anyRequest().authenticated()
                 .and()

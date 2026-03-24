@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${fileName != null ? fileName : #messages.msg('file.preview')} + ' - Mini Git Server'">File Preview - Mini Git Server</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jitOffice/jit-viewer-sdk@ca7fb73/cdn/jit-viewer.min.css">
+    <link rel="stylesheet" href="/vendor/highlight.github.min.css">
+    <link rel="stylesheet" href="/vendor/docx-preview.min.css">
+    <link rel="stylesheet" href="/vendor/jit-viewer.min.css">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -256,9 +258,11 @@
             padding: 1rem;
         }
         .excel-container { display: flex; flex-direction: column; gap: 1rem; }
-        .excel-container table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #d0d7de; border-radius: 6px; }
-        .excel-container th, .excel-container td { border: 1px solid #d0d7de; padding: 0.35rem 0.6rem; font-size: 0.88rem; }
+        .excel-container section { overflow-x: auto; background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.5rem; }
+        .excel-container table { border-collapse: collapse; width: auto; min-width: 100%; background: #fff; }
+        .excel-container th, .excel-container td { border: 1px solid #d0d7de; padding: 0.35rem 0.6rem; font-size: 0.88rem; white-space: nowrap; }
         .excel-container th { background: #f6f8fa; }
+        .excel-container h4 { padding: 0.5rem 0; font-size: 0.9rem; color: #57606a; }
 
         .office-progress {
             display: flex;
@@ -294,6 +298,32 @@
         /* ─── Mermaid diagrams ─── */
         .mermaid { text-align: center; margin: 0.75rem 0; }
         .mermaid svg { max-width: 100%; }
+
+        /* ─── Share modal ─── */
+        .share-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .share-overlay.open { display: flex; }
+        .share-modal {
+            background: #fff; border-radius: 10px; padding: 1.5rem; width: 420px; max-width: 95vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+        }
+        .share-modal h3 { font-size: 1.05rem; margin-bottom: 1rem; color: #24292f; }
+        .share-form-row { margin-bottom: 0.75rem; }
+        .share-form-row label { display: block; font-size: 0.83rem; color: #57606a; margin-bottom: 0.3rem; font-weight: 600; }
+        .share-form-row select, .share-form-row input[type=text], .share-form-row input[type=password] {
+            width: 100%; padding: 0.4rem 0.6rem; border: 1px solid #d0d7de; border-radius: 6px;
+            font-size: 0.88rem; background: #f6f8fa;
+        }
+        .share-form-row select:focus, .share-form-row input:focus { outline: 2px solid #0969da; background: #fff; }
+        .share-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+        .share-result { margin-top: 1rem; padding: 0.75rem; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; }
+        .share-result label { display: block; font-size: 0.8rem; color: #57606a; margin-bottom: 0.35rem; font-weight: 600; }
+        .share-url-row { display: flex; gap: 0.4rem; }
+        .share-url-row input { flex: 1; padding: 0.35rem 0.55rem; border: 1px solid #d0d7de; border-radius: 6px; font-size: 0.82rem; background: #fff; }
+        .share-revoke-row { margin-top: 0.5rem; font-size: 0.8rem; }
+        .share-revoke-row a { color: #d1242f; cursor: pointer; text-decoration: underline; }
 
         /* ─── Responsive ─── */
         @media (max-width: 640px) {
@@ -381,6 +411,9 @@
                 <a th:href="${downloadUrl}" class="btn primary">
                     ⬇ <span th:text="#{file.download}">Download</span>
                 </a>
+                <button class="btn" onclick="openShareModal()" title="Share">
+                    🔗 <span th:text="#{share.create}">分享</span>
+                </button>
             </div>
         </div>
 
@@ -461,15 +494,57 @@
     </main>
 </div><!-- /page-layout -->
 
-<!-- CDN scripts -->
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.1/dist/docx-preview.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pptxjs@2.12.0/dist/pptxjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- ═══ Share modal ═══ -->
+<div class="share-overlay" id="share-overlay" onclick="if(event.target===this)closeShareModal()">
+    <div class="share-modal">
+        <h3>🔗 <span th:text="#{share.title}">分享文件</span></h3>
+        <div id="share-form-panel">
+            <div class="share-form-row">
+                <label th:text="#{share.expiry}">有效期</label>
+                <select id="share-expiry">
+                    <option value="0" th:text="#{share.expiry.never}">永不过期</option>
+                    <option value="1" th:text="#{share.expiry.1h}">1 小时</option>
+                    <option value="24" th:text="#{share.expiry.24h}">24 小时</option>
+                    <option value="168" th:text="#{share.expiry.7d}">7 天</option>
+                    <option value="720" th:text="#{share.expiry.30d}">30 天</option>
+                </select>
+            </div>
+            <div class="share-form-row">
+                <label th:text="#{share.password}">访问密码</label>
+                <input type="password" id="share-password" th:placeholder="#{share.password.placeholder}" autocomplete="off"/>
+            </div>
+            <div class="share-actions">
+                <button class="btn" onclick="closeShareModal()" th:text="#{ui.cancel}">取消</button>
+                <button class="btn primary" onclick="createShareLink()" th:text="#{share.create}">创建分享链接</button>
+            </div>
+        </div>
+        <div id="share-result-panel" style="display:none;">
+            <div class="share-result">
+                <label th:text="#{share.link}">分享链接</label>
+                <div class="share-url-row">
+                    <input type="text" id="share-url-input" readonly onclick="this.select()"/>
+                    <button class="btn" id="share-copy-btn" onclick="copyShareLink()" th:text="#{share.copy}">复制</button>
+                </div>
+                <div class="share-revoke-row">
+                    <a onclick="revokeShareLink()" th:text="#{share.revoke}">撤销链接</a>
+                </div>
+            </div>
+            <div class="share-actions">
+                <button class="btn" onclick="closeShareModal()" th:text="#{ui.cancel}">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Local vendor scripts -->
+<script src="/vendor/highlight.common.min.js"></script>
+<script src="/vendor/docx-preview.min.js"></script>
+<script src="/vendor/xlsx.full.min.js"></script>
+<script src="/vendor/jszip.min.js"></script>
+<script src="/vendor/pptxjs.min.js"></script>
+<script src="/vendor/mermaid.min.js"></script>
 <!-- JitViewer SDK: unified multi-format document viewer -->
-<script src="https://cdn.jsdelivr.net/gh/jitOffice/jit-viewer-sdk@ca7fb73/cdn/jit-viewer.min.js"></script>
+<script src="/vendor/jit-viewer.min.js"></script>
 
 <script th:inline="javascript">
     // ── Syntax highlighting ──
@@ -508,7 +583,7 @@
         var s = document.getElementById('office-status');
         var c = document.getElementById(id);
         if (s) s.style.display = 'none';
-        if (c) c.style.display = 'block';
+        if (c) c.style.display = c.classList.contains('excel-container') ? 'flex' : 'block';
     }
 
     if (clientRenderOffice && rawUrl) {
@@ -583,6 +658,76 @@
                 }
             })
             .catch(showFallback);
+    }
+
+    // ── Share modal ──
+    var shareRepoName  = /*[[${repoName}]]*/ '';
+    var shareFilePath  = /*[[${filePath}]]*/ '';
+    var shareBranch    = /*[[${branch}]]*/ '';
+    var shareToken     = null;
+
+    function openShareModal() {
+        document.getElementById('share-form-panel').style.display = 'block';
+        document.getElementById('share-result-panel').style.display = 'none';
+        shareToken = null;
+        document.getElementById('share-overlay').classList.add('open');
+    }
+
+    function closeShareModal() {
+        document.getElementById('share-overlay').classList.remove('open');
+    }
+
+    function createShareLink() {
+        var expiry   = document.getElementById('share-expiry').value;
+        var password = document.getElementById('share-password').value;
+        var csrf     = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        var csrfHdr  = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+        var body = 'repoName=' + encodeURIComponent(shareRepoName) +
+                   '&filePath=' + encodeURIComponent(shareFilePath) +
+                   '&branch=' + encodeURIComponent(shareBranch || '') +
+                   '&expiresInHours=' + encodeURIComponent(expiry) +
+                   '&password=' + encodeURIComponent(password);
+        var headers = {'Content-Type': 'application/x-www-form-urlencoded'};
+        headers[csrfHdr] = csrf;
+        fetch('/admin/share/create', {method: 'POST', headers: headers, body: body})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.shareUrl) {
+                    shareToken = data.token;
+                    document.getElementById('share-url-input').value = data.shareUrl;
+                    document.getElementById('share-form-panel').style.display = 'none';
+                    document.getElementById('share-result-panel').style.display = 'block';
+                } else {
+                    alert('Failed to create share link');
+                }
+            })
+            .catch(function() { alert('Error creating share link'); });
+    }
+
+    function copyShareLink() {
+        var input = document.getElementById('share-url-input');
+        input.select();
+        navigator.clipboard.writeText(input.value).then(function() {
+            var btn = document.getElementById('share-copy-btn');
+            var orig = btn.textContent;
+            btn.textContent = '✓';
+            setTimeout(function() { btn.textContent = orig; }, 1500);
+        }).catch(function() { document.execCommand('copy'); });
+    }
+
+    function revokeShareLink() {
+        if (!shareToken) return;
+        var csrf     = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        var csrfHdr  = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+        var headers  = {};
+        headers[csrfHdr] = csrf;
+        fetch('/admin/share/' + shareToken + '/revoke', {method: 'POST', headers: headers})
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                document.getElementById('share-url-input').value = '(已撤销)';
+                shareToken = null;
+            })
+            .catch(function() { alert('Revoke failed'); });
     }
 </script>
 </body>
